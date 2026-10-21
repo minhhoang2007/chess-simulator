@@ -352,11 +352,11 @@ export class StauntonGeometryFactory {
       return { color: p.collar, isCollar: true };
     });
 
-    // Sculpted horse head facing right (+X) matching B1/G1/B8/G8 in reference photo
+    // Sculpted horse head facing right (+X) with fuller chest/belly curve
     const horseShape = new THREE.Shape();
-    horseShape.moveTo(-0.085, 0.20);
-    horseShape.quadraticCurveTo(0.14, 0.25, 0.115, 0.39);
-    horseShape.lineTo(0.08, 0.44);
+    horseShape.moveTo(-0.095, 0.20);
+    horseShape.quadraticCurveTo(0.20, 0.25, 0.145, 0.39);
+    horseShape.lineTo(0.095, 0.44);
     // Muzzle pointing right (+X)
     horseShape.lineTo(0.215, 0.415);
     horseShape.quadraticCurveTo(0.25, 0.45, 0.215, 0.50);
@@ -365,8 +365,8 @@ export class StauntonGeometryFactory {
     horseShape.lineTo(0.05, 0.67);
     horseShape.lineTo(-0.015, 0.61);
     // Curved neck back
-    horseShape.quadraticCurveTo(-0.16, 0.51, -0.15, 0.34);
-    horseShape.quadraticCurveTo(-0.14, 0.24, -0.085, 0.20);
+    horseShape.quadraticCurveTo(-0.17, 0.51, -0.16, 0.34);
+    horseShape.quadraticCurveTo(-0.15, 0.24, -0.095, 0.20);
 
     const headGeom = new THREE.ExtrudeGeometry(horseShape, {
       depth: 0.12,
@@ -463,14 +463,15 @@ export class StauntonGeometryFactory {
       new THREE.Vector2(0.195, 0.415),
       new THREE.Vector2(0.195, 0.455),
       new THREE.Vector2(0.15, 0.48),
-      // Coronet cup
-      new THREE.Vector2(0.195, 0.56),
-      new THREE.Vector2(0.22, 0.63),
-      // Inner rounded dome
-      new THREE.Vector2(0.155, 0.62),
-      new THREE.Vector2(0.12, 0.68),
-      new THREE.Vector2(0.045, 0.715),
-      new THREE.Vector2(0, 0.725)
+      // Coronet cup flared wider for clearer crown points
+      new THREE.Vector2(0.205, 0.56),
+      new THREE.Vector2(0.235, 0.64),
+      new THREE.Vector2(0.175, 0.605),
+      // Flatter, less bulbous inner dome
+      new THREE.Vector2(0.125, 0.61),
+      new THREE.Vector2(0.095, 0.655),
+      new THREE.Vector2(0.035, 0.678),
+      new THREE.Vector2(0, 0.684)
     ];
 
     const baseLathe = this.colorizeLathe(new THREE.LatheGeometry(pts, 36), color, (y) => {
@@ -482,22 +483,22 @@ export class StauntonGeometryFactory {
       if (y < 0.41) return { color: p.groove, isGroove: true };
       if (y < 0.46) return { color: p.collar, isCollar: true };
       if (y < 0.485) return { color: p.groove, isGroove: true };
-      if (y < 0.635) return { color: p.crownTop, isCrownTop: true };
+      if (y < 0.642) return { color: p.crownTop, isCrownTop: true };
       return { color: p.head };
     });
 
     const parts: THREE.BufferGeometry[] = [baseLathe];
     const numPearls = 8;
-    const rimRadius = 0.198;
+    const rimRadius = 0.215;
     for (let i = 0; i < numPearls; i++) {
       const angle = (i / numPearls) * Math.PI * 2;
-      const pearl = new THREE.SphereGeometry(0.033, 12, 12);
-      pearl.translate(Math.cos(angle) * rimRadius, 0.645, Math.sin(angle) * rimRadius);
+      const pearl = new THREE.SphereGeometry(0.038, 12, 12);
+      pearl.translate(Math.cos(angle) * rimRadius, 0.655, Math.sin(angle) * rimRadius);
       parts.push(this.colorizeMesh(pearl, p.collar, color, { isCollar: true }));
     }
 
-    const topPearl = new THREE.SphereGeometry(0.038, 14, 14);
-    topPearl.translate(0, 0.74, 0);
+    const topPearl = new THREE.SphereGeometry(0.028, 14, 14);
+    topPearl.translate(0, 0.695, 0);
     parts.push(this.colorizeMesh(topPearl, p.collar, color, { isCollar: true }));
 
     return this.mergeGeometries(parts);

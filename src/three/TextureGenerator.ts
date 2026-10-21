@@ -32,7 +32,7 @@ export class TextureGenerator {
       return this.pieceSpriteCache.get(spriteName)!;
     }
 
-    const texture = this.loader.load(`/textures/pieces/${spriteName}.png`);
+    const texture = this.loader.load(`/textures/pieces/${spriteName}.png?v=3`);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
     texture.magFilter = THREE.LinearFilter;
@@ -46,7 +46,7 @@ export class TextureGenerator {
    * extracted directly from the 1080p reference image.
    */
   public static createWoodTableTexture(maxAnisotropy: number = 8): THREE.Texture {
-    const texture = this.loader.load('/textures/table_photo.jpg');
+    const texture = this.loader.load('/textures/table_photo.jpg?v=3');
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
@@ -65,7 +65,7 @@ export class TextureGenerator {
     maxAnisotropy: number = 8
   ): THREE.Texture {
     if (boardTheme === 'rustic-wood') {
-      const texture = this.loader.load('/textures/board_photo.jpg');
+      const texture = this.loader.load('/textures/board_photo.jpg?v=3');
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = maxAnisotropy;
       return texture;
