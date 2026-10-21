@@ -22,10 +22,14 @@ export const App: React.FC = () => {
   const [isBotThinking, setIsBotThinking] = useState<boolean>(false);
   const [hintInfo, setHintInfo] = useState<{ from: Square; to: Square } | null>(null);
 
-  // Checkmated King Square & 2D Screen Position for Chess.com Checkmate Popup
+  // Checkmated / Checked King Square & 2D Screen Position for Chess.com Badges on King
   const [matedKingSquare, setMatedKingSquare] = useState<Square | null>(null);
   const [matedKingScreenPos, setMatedKingScreenPos] = useState<{ x: number; y: number } | null>(null);
   const matedKingSquareRef = useRef<Square | null>(null);
+
+  const [checkedKingSquare, setCheckedKingSquare] = useState<Square | null>(null);
+  const [checkedKingScreenPos, setCheckedKingScreenPos] = useState<{ x: number; y: number } | null>(null);
+  const checkedKingSquareRef = useRef<Square | null>(null);
 
   // Settings: Default Board Blue ('tournament-blue') + Classic Wood ('classic-wood')
   const [settings, setSettings] = useState<GameSettings>({
@@ -66,13 +70,19 @@ export const App: React.FC = () => {
   const t = TRANSLATIONS.en;
 
   const updateMatedKingScreenCoords = useCallback(() => {
-    const sq = matedKingSquareRef.current;
-    if (!sq || !sceneRef.current) {
+    const matedSq = matedKingSquareRef.current;
+    if (!matedSq || !sceneRef.current) {
       setMatedKingScreenPos(null);
-      return;
+    } else {
+      setMatedKingScreenPos(sceneRef.current.getKingTopRightScreenPosition(matedSq));
     }
-    const coords = sceneRef.current.getKingTopRightScreenPosition(sq);
-    setMatedKingScreenPos(coords);
+
+    const checkedSq = checkedKingSquareRef.current;
+    if (!checkedSq || !sceneRef.current) {
+      setCheckedKingScreenPos(null);
+    } else {
+      setCheckedKingScreenPos(sceneRef.current.getKingTopRightScreenPosition(checkedSq));
+    }
   }, []);
 
   // 1. Initialize 3D Scene
@@ -237,7 +247,6 @@ export const App: React.FC = () => {
 
       if (result.captured) sounds.playCapture();
       else if (result.san.includes('O-O')) sounds.playCastle();
-      else if (chess.inCheck()) sounds.playCheck();
       else sounds.playMove();
 
       sceneRef.current?.animateMove(from, to, () => {
@@ -296,7 +305,6 @@ export const App: React.FC = () => {
 
           if (moveRes.captured) sounds.playCapture();
           else if (moveRes.san.includes('O-O')) sounds.playCastle();
-          else if (chess.inCheck()) sounds.playCheck();
           else sounds.playMove();
 
           sceneRef.current?.animateMove(best.from, best.to, () => {
@@ -333,7 +341,7 @@ export const App: React.FC = () => {
     });
   }, [chess, selectedBot, playerColor, moveHistory.length]);
 
-  // 7. Check Game Over (Chess.com Checkmate Popup on Checkmated King!)
+  // 7. Check & Game Over (Chess.com Check '+' Badge & Checkmate '#' Popup on King!)
   const checkGameEnd = () => {
     if (chess.isCheckmate()) {
       setIsGameOver(true);
@@ -341,6 +349,10 @@ export const App: React.FC = () => {
       const win = loserColor === 'w' ? 'b' : 'w';
       setWinner(win);
       setGameOverReason('Checkmate');
+
+      checkedKingSquareRef.current = null;
+      setCheckedKingSquare(null);
+      setCheckedKingScreenPos(null);
 
       const kingSq = findKingSquare(loserColor);
       matedKingSquareRef.current = kingSq;
@@ -359,7 +371,10 @@ export const App: React.FC = () => {
       } else {
         sounds.playDefeat();
       }
-    } else if (chess.isStalemate()) {
+      return;
+    }
+
+    if (chess.isStalemate()) {
       setIsGameOver(true);
       setWinner('draw');
       setGameOverReason('Stalemate');
@@ -376,6 +391,20 @@ export const App: React.FC = () => {
       setWinner('draw');
       setGameOverReason('50-Move Rule');
     }
+
+    // Track non-checkmate Check ('note đỏ' on top-right corner of checked King)
+    if (!chess.isGameOver() && chess.inCheck()) {
+      const checkedKingSq = findKingSquare(chess.turn());
+      checkedKingSquareRef.current = checkedKingSq;
+      setCheckedKingSquare(checkedKingSq);
+      if (checkedKingSq && sceneRef.current) {
+        setCheckedKingScreenPos(sceneRef.current.getKingTopRightScreenPosition(checkedKingSq));
+      }
+    } else {
+      checkedKingSquareRef.current = null;
+      setCheckedKingSquare(null);
+      setCheckedKingScreenPos(null);
+    }
   };
 
   // 8. New Game / Restart
@@ -385,6 +414,9 @@ export const App: React.FC = () => {
     matedKingSquareRef.current = null;
     setMatedKingSquare(null);
     setMatedKingScreenPos(null);
+    checkedKingSquareRef.current = null;
+    setCheckedKingSquare(null);
+    setCheckedKingScreenPos(null);
 
     const newBot = bot || selectedBot;
     const newCol = col || playerColor;
@@ -447,6 +479,19 @@ export const App: React.FC = () => {
     setIsGameOver(false);
     setWinner(null);
     setGameOverReason('');
+
+    if (chess.inCheck()) {
+      const checkedKingSq = findKingSquare(chess.turn());
+      checkedKingSquareRef.current = checkedKingSq;
+      setCheckedKingSquare(checkedKingSq);
+      if (checkedKingSq && sceneRef.current) {
+        setCheckedKingScreenPos(sceneRef.current.getKingTopRightScreenPosition(checkedKingSq));
+      }
+    } else {
+      checkedKingSquareRef.current = null;
+      setCheckedKingSquare(null);
+      setCheckedKingScreenPos(null);
+    }
 
     selectedSquareRef.current = null;
     sceneRef.current?.setSelection(null, []);
@@ -521,6 +566,23 @@ export const App: React.FC = () => {
       <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full cursor-pointer" />
 
       {/* Main Chessboard HUD: Always available */}
+      {/* ========================================================
+          CHESS.COM CHECK RED BADGE ('+' Note Đỏ) ON CHECKED KING
+          ======================================================== */}
+      {!isGameOver && checkedKingSquare && checkedKingScreenPos && (
+        <div
+          style={{
+            left: `${checkedKingScreenPos.x}px`,
+            top: `${checkedKingScreenPos.y}px`
+          }}
+          className="fixed z-30 pointer-events-none animate-checkmate-pop flex items-center"
+        >
+          <div className="w-7 h-7 rounded-full bg-[#e53935] border-2 border-white shadow-[0_4px_12px_rgba(229,57,53,0.75)] flex items-center justify-center text-white font-black text-sm leading-none shrink-0">
+            +
+          </div>
+        </div>
+      )}
+
       {/* ========================================================
           CHESS.COM CHECKMATE POPUP ON TOP-RIGHT OF CHECKMATED KING
           ======================================================== */}

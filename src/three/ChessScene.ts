@@ -378,47 +378,13 @@ export class ChessScene {
     }
   }
 
-  private spawnLandingRipple(pos: THREE.Vector3) {
-    const ringGeo = new THREE.RingGeometry(0.14, 0.24, 32);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.42,
-      side: THREE.DoubleSide,
-      depthWrite: false
-    });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(pos.x, 0.223, pos.z);
-    ring.renderOrder = 15;
-    this.scene.add(ring);
-
-    const start = performance.now();
-    const duration = 210;
-    const step = () => {
-      const t = Math.min(1, (performance.now() - start) / duration);
-      const scale = 1.0 + t * 1.45;
-      ring.scale.set(scale, scale, 1);
-      ringMat.opacity = 0.42 * (1 - t) * (1 - t);
-      if (t < 1) {
-        requestAnimationFrame(step);
-      } else {
-        this.scene.remove(ring);
-        ringGeo.dispose();
-        ringMat.dispose();
-      }
-    };
-    requestAnimationFrame(step);
-  }
-
   /**
-   * Sequential serpentine setup animation:
-   * - Strict one-after-another sequence so pieces do NOT overlap in mid-air:
-   *   1. Rook a1 (and a8) appears and lands first
-   *   2. Then Knight b1 (and b8) appears and lands
-   *   3. Then Bishop c1 (and c8) -> d1 -> e1 -> f1 -> g1 -> h1
-   *   4. Only after h1 lands, Pawn h2 (and h7) starts -> g2 -> f2 -> e2 -> d2 -> c2 -> b2 -> a2
-   * - Triggers `onStepLand(stepIndex)` right at board impact for crisp wooden tap audio.
+   * Mature, weighted tournament piece lock-in setup animation:
+   * - Zero cartoon squash/stretch, zero bounce, zero ripple rings.
+   * - Solid 1:1 proportions: each pair glides in from a subtle height with a sharp quintic
+   *   magnetic deceleration and locks dead-stop onto its square with a muted weighted wood thud.
+   * - Strict sequential order:
+   *   a1/a8 -> b1/b8 -> ... -> h1/h8 -> h2/h7 -> ... -> a2/a7
    */
   public animateBoardSetup(
     game: Chess,
@@ -427,7 +393,6 @@ export class ChessScene {
   ) {
     this.clearBoard();
 
-    // 16 sequential steps: a1 -> ... -> h1 -> h2 -> ... -> a2 (and Black a8 -> ... -> h8 -> h7 -> ... -> a7)
     const whiteOrder: Square[] = [
       'a1', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1',
       'h2', 'g2', 'f2', 'e2', 'd2', 'c2', 'b2', 'a2'
@@ -450,10 +415,8 @@ export class ChessScene {
 
     const totalSteps = whiteOrder.length; // 16 steps
     let finishedSteps = 0;
-    // Sequential cadence: each piece drops and hits the board (~68ms) BEFORE the next piece spawns (76ms),
-    // so you clearly see a1 -> then b1 -> then c1 ... -> h1 -> then h2 -> ... -> a2 one by one!
-    const stepIntervalMs = 76;
-    const jumpDurationMs = 105;
+    const stepIntervalMs = 56; // Crisp sequential cadence
+    const glideDurationMs = 88; // Sharp weighted lock-in duration
 
     for (let i = 0; i < totalSteps; i++) {
       const wSq = whiteOrder[i];
@@ -464,94 +427,67 @@ export class ChessScene {
       const timeoutId = window.setTimeout(() => {
         const spawnedMeshes: {
           mesh: THREE.Mesh;
+          startPos: THREE.Vector3;
           targetPos: THREE.Vector3;
         }[] = [];
 
         if (wPiece) {
           const mesh = this.createPieceMesh(wSq, wPiece.type, wPiece.color);
           const targetPos = this.squareToPosition(wSq);
-          spawnedMeshes.push({ mesh, targetPos });
+          const zDir = targetPos.z >= 0 ? 1 : -1;
+          const startPos = new THREE.Vector3(
+            targetPos.x,
+            targetPos.y + 0.34,
+            targetPos.z + zDir * 0.16
+          );
+          spawnedMeshes.push({ mesh, startPos, targetPos });
         }
         if (bPiece) {
           const mesh = this.createPieceMesh(bSq, bPiece.type, bPiece.color);
           const targetPos = this.squareToPosition(bSq);
-          spawnedMeshes.push({ mesh, targetPos });
+          const zDir = targetPos.z >= 0 ? 1 : -1;
+          const startPos = new THREE.Vector3(
+            targetPos.x,
+            targetPos.y + 0.34,
+            targetPos.z + zDir * 0.16
+          );
+          spawnedMeshes.push({ mesh, startPos, targetPos });
         }
 
-        const dropHeight = 0.95;
         for (const item of spawnedMeshes) {
-          this.setPiecePosition(
-            item.mesh,
-            new THREE.Vector3(item.targetPos.x, item.targetPos.y + dropHeight, item.targetPos.z)
-          );
-          item.mesh.scale.set(0.35, 0.35, 0.35);
+          this.setPiecePosition(item.mesh, item.startPos);
+          item.mesh.scale.set(1, 1, 1);
           const mat = item.mesh.material as THREE.Material & { opacity?: number };
           if (mat && typeof mat.opacity === 'number') {
             mat.opacity = 0.0;
           }
         }
 
-        let hasTriggeredImpact = false;
+        let hasTriggeredSound = false;
         const startTime = performance.now();
 
         const animStep = () => {
           const elapsed = performance.now() - startTime;
-          const progress = Math.min(elapsed / jumpDurationMs, 1);
+          const progress = Math.min(elapsed / glideDurationMs, 1);
 
-          // Phase 1 (0.0 -> 0.65): Crisp vertical drop onto the square (~68ms)
-          // Phase 2 (0.65 -> 1.0): Touchdown impact, elastic squash & micro-bounce (~37ms)
-          const impactT = 0.65;
+          // Razor-sharp quintic deceleration into a heavy dead-stop lock
+          const inv = 1 - progress;
+          const ease = 1 - inv * inv * inv * inv * inv;
+          const opacity = Math.min(1.0, progress * 2.4);
 
-          if (progress < impactT) {
-            const t1 = progress / impactT; // 0 -> 1
-            // Fast accelerating drop (quadratic ease-in)
-            const dropEase = t1 * t1;
-            const curYOffset = dropHeight * (1 - dropEase);
+          if (!hasTriggeredSound && progress >= 0.72) {
+            hasTriggeredSound = true;
+            if (onStepLand) onStepLand(i);
+          }
 
-            const baseScale = THREE.MathUtils.lerp(0.4, 1.04, Math.min(1, t1 * 1.3));
-            const stretchY = 1.0 + t1 * 0.14;
-            const squashX = 1.0 / Math.sqrt(stretchY);
-            const opacity = Math.min(1.0, t1 * 3.0);
+          for (const item of spawnedMeshes) {
+            const curZ = THREE.MathUtils.lerp(item.startPos.z, item.targetPos.z, ease);
+            const curY = THREE.MathUtils.lerp(item.startPos.y, item.targetPos.y, ease);
+            this.setPiecePosition(item.mesh, new THREE.Vector3(item.targetPos.x, curY, curZ));
 
-            for (const item of spawnedMeshes) {
-              this.setPiecePosition(
-                item.mesh,
-                new THREE.Vector3(item.targetPos.x, item.targetPos.y + curYOffset, item.targetPos.z)
-              );
-              item.mesh.scale.set(baseScale * squashX, baseScale * stretchY, baseScale * squashX);
-
-              const mat = item.mesh.material as THREE.Material & { opacity?: number };
-              if (mat && typeof mat.opacity === 'number') {
-                mat.opacity = opacity;
-              }
-            }
-          } else {
-            // Touchdown! Trigger audio & landing ring right as the piece lands (before the next square spawns!)
-            if (!hasTriggeredImpact) {
-              hasTriggeredImpact = true;
-              if (onStepLand) onStepLand(i);
-              for (const item of spawnedMeshes) {
-                this.spawnLandingRipple(item.targetPos);
-              }
-            }
-
-            const t2 = (progress - impactT) / (1 - impactT); // 0 -> 1
-            const reboundHopY = Math.sin(t2 * Math.PI) * 0.16 * (1 - t2 * 0.4);
-            const squashAmount = Math.cos(t2 * Math.PI * 1.5) * Math.pow(1 - t2, 1.6) * 0.15;
-            const scaleY = 1.0 - squashAmount;
-            const scaleX = 1.0 + squashAmount * 0.7;
-
-            for (const item of spawnedMeshes) {
-              this.setPiecePosition(
-                item.mesh,
-                new THREE.Vector3(item.targetPos.x, item.targetPos.y + Math.max(0, reboundHopY), item.targetPos.z)
-              );
-              item.mesh.scale.set(scaleX, scaleY, scaleX);
-
-              const mat = item.mesh.material as THREE.Material & { opacity?: number };
-              if (mat && typeof mat.opacity === 'number') {
-                mat.opacity = 1.0;
-              }
+            const mat = item.mesh.material as THREE.Material & { opacity?: number };
+            if (mat && typeof mat.opacity === 'number') {
+              mat.opacity = opacity;
             }
           }
 
@@ -560,7 +496,6 @@ export class ChessScene {
           } else {
             for (const item of spawnedMeshes) {
               this.setPiecePosition(item.mesh, item.targetPos);
-              item.mesh.scale.set(1, 1, 1);
               const mat = item.mesh.material as THREE.Material & { opacity?: number };
               if (mat && typeof mat.opacity === 'number') {
                 mat.opacity = 1.0;

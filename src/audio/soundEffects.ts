@@ -56,56 +56,39 @@ class SoundSynthesizer {
   }
 
   /**
-   * Crisp wooden tap sound when each pair of pieces lands on the board during initial setup.
-   * Uses a warm wood-knock envelope with subtle pitch variation across the 16 steps.
+   * Deep, muted luxury weighted wood-on-stone thud when pieces lock onto the board during setup.
+   * No cartoon rising musical scale—just a low, authoritative tactile thud.
    */
-  public playSetupTap(stepIndex: number = 0) {
+  public playSetupTap(_stepIndex: number = 0) {
     if (!this.enabled) return;
     this.initContext();
     if (!this.ctx) return;
 
     const t = this.ctx.currentTime;
-    // Slight musical/natural pitch curve across the 16 steps so rapid taps feel organic
-    const pitchFactor = 0.94 + (stepIndex / 15) * 0.18 + (Math.random() * 0.04 - 0.02);
+    // Subtle ±1.5% organic micro-variance, no rising musical scale
+    const v = 0.985 + Math.random() * 0.03;
 
-    // 1. Warm wooden body thud
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     const filter = this.ctx.createBiquadFilter();
 
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(720 * pitchFactor, t);
-    filter.Q.setValueAtTime(2.2, t);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(520 * v, t);
+    filter.frequency.exponentialRampToValueAtTime(110, t + 0.045);
 
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(310 * pitchFactor, t);
-    osc.frequency.exponentialRampToValueAtTime(82 * pitchFactor, t + 0.055);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(145 * v, t);
+    osc.frequency.exponentialRampToValueAtTime(38, t + 0.045);
 
-    gain.gain.setValueAtTime(0.28, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    gain.gain.setValueAtTime(0.24, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
 
     osc.connect(filter);
     filter.connect(gain);
     gain.connect(this.ctx.destination);
 
     osc.start(t);
-    osc.stop(t + 0.065);
-
-    // 2. Crisp felt/stone contact click
-    const clickOsc = this.ctx.createOscillator();
-    const clickGain = this.ctx.createGain();
-    clickOsc.type = 'sine';
-    clickOsc.frequency.setValueAtTime(1350 * pitchFactor, t);
-    clickOsc.frequency.exponentialRampToValueAtTime(420 * pitchFactor, t + 0.022);
-
-    clickGain.gain.setValueAtTime(0.11, t);
-    clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
-
-    clickOsc.connect(clickGain);
-    clickGain.connect(this.ctx.destination);
-
-    clickOsc.start(t);
-    clickOsc.stop(t + 0.028);
+    osc.stop(t + 0.055);
   }
 
   public playCapture() {
@@ -144,34 +127,8 @@ class SoundSynthesizer {
   }
 
   public playCheck() {
-    if (!this.enabled) return;
-    this.initContext();
-    if (!this.ctx) return;
-
-    const t = this.ctx.currentTime;
-    const osc1 = this.ctx.createOscillator();
-    const osc2 = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(587.33, t); // D5
-    osc1.frequency.exponentialRampToValueAtTime(880, t + 0.18); // A5
-
-    osc2.type = 'triangle';
-    osc2.frequency.setValueAtTime(880, t); // A5
-    osc2.frequency.exponentialRampToValueAtTime(1174.66, t + 0.18); // D6
-
-    gain.gain.setValueAtTime(0.22, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(this.ctx.destination);
-
-    osc1.start(t);
-    osc2.start(t);
-    osc1.stop(t + 0.36);
-    osc2.stop(t + 0.36);
+    // Check sound disabled per user preference; use standard move sound only
+    this.playMove();
   }
 
   public playCastle() {
