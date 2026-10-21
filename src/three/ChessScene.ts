@@ -22,7 +22,7 @@ export class ChessScene {
   private hintMesh: THREE.Group | null = null;
   private checkMesh: THREE.Mesh | null = null;
 
-  // Board Plane for Accurate Raycasting
+  // Board Plane for Raycasting
   private boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.22);
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
@@ -42,78 +42,86 @@ export class ChessScene {
   private onSelectSquareCallback: ((square: Square) => void) | null = null;
 
   // Orientation
-  private isFlipped = false; // false = White at bottom, true = Black at bottom
+  private isFlipped = false;
 
-  // Subtle 3D Camera Angles (matching reference photo)
-  private readonly PHOTO_CAMERA_POS = new THREE.Vector3(0, 13.5, 5.0);
-  private readonly PHOTO_CAMERA_TARGET = new THREE.Vector3(0, 0, 0);
+  // Exact Camera Perspective matching the reference photo:
+  // Elevated angle showing the wooden board with front bezel visible
+  private readonly PHOTO_CAMERA_POS = new THREE.Vector3(0, 10.6, 6.0);
+  private readonly PHOTO_CAMERA_TARGET = new THREE.Vector3(0, 0, -0.15);
 
   constructor(container: HTMLElement) {
     this.container = container;
 
     // 1. Scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a120c);
+    this.scene.background = new THREE.Color(0x19100a);
 
-    // 2. Camera with Telephoto FOV (Subtle 3D, identical to reference image!)
+    // 2. Camera: FOV ~37 deg matching the photo's perspective
     const aspect = container.clientWidth / container.clientHeight;
-    this.camera = new THREE.PerspectiveCamera(30, aspect, 0.1, 100);
+    this.camera = new THREE.PerspectiveCamera(37, aspect, 0.1, 100);
     this.camera.position.copy(this.PHOTO_CAMERA_POS);
     this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
 
-    // 3. Renderer with realistic soft shadows & filmic tone
+    // 3. Renderer with high-quality soft shadows & filmic color
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.08;
     container.appendChild(this.renderer.domElement);
 
-    // 4. Studio Lighting (soft directional key + ambient + rim)
+    // 4. Lighting tuned to match photo:
+    // Key light top-right (casting soft shadows to bottom-left) + cool rim light on the left
     this.setupLighting();
 
-    // 5. Wood Table & 3D Chessboard Box
+    // 5. Table & Board
     this.setupTableAndBoard();
 
-    // 6. Highlights & Markers
+    // 6. Highlights Group
     this.scene.add(this.highlightGroup);
 
-    // 7. Event Listeners for Raycasting & Drag-and-drop
+    // 7. Raycasting & Drag-and-drop
     this.setupInteractivity();
 
-    // 8. Render loop
+    // 8. Animation loop
     this.animate = this.animate.bind(this);
     this.animate();
   }
 
   private setupLighting() {
-    // Ambient light
-    const ambientLight = new THREE.AmbientLight(0xfffaed, 0.95);
+    // Warm ambient fill so dark squares and shadows aren't pitch black
+    const ambientLight = new THREE.AmbientLight(0xfff6eb, 1.1);
     this.scene.add(ambientLight);
 
-    // Key light positioned slightly to the right & above (produces shadows matching photo)
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
-    keyLight.position.set(4, 14, 6);
+    // Main Directional Key Light (positioned top-right, creating shadows like in photo)
+    const keyLight = new THREE.DirectionalLight(0xfff8ee, 2.3);
+    keyLight.position.set(4.5, 13.0, 6.0);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 2048;
     keyLight.shadow.mapSize.height = 2048;
-    keyLight.shadow.camera.near = 1;
-    keyLight.shadow.camera.far = 25;
-    keyLight.shadow.camera.left = -5;
-    keyLight.shadow.camera.right = 5;
-    keyLight.shadow.camera.top = 5;
-    keyLight.shadow.camera.bottom = -5;
+    keyLight.shadow.camera.near = 2;
+    keyLight.shadow.camera.far = 28;
+    keyLight.shadow.camera.left = -6;
+    keyLight.shadow.camera.right = 6;
+    keyLight.shadow.camera.top = 6;
+    keyLight.shadow.camera.bottom = -6;
     keyLight.shadow.bias = -0.0003;
+    keyLight.shadow.radius = 2.0;
     this.scene.add(keyLight);
 
-    // Subtle back rim fill
-    const rimLight = new THREE.DirectionalLight(0xd4e4f7, 0.8);
-    rimLight.position.set(-5, 8, -6);
+    // Cool Rim Light on the back-left (gives the sharp white rim reflection on the black pieces!)
+    const rimLight = new THREE.DirectionalLight(0xbad4ff, 1.2);
+    rimLight.position.set(-6.5, 9.0, -5.5);
     this.scene.add(rimLight);
 
-    // Studio Environment for glass reflections
+    // Soft front fill
+    const frontFill = new THREE.DirectionalLight(0xffeedd, 0.6);
+    frontFill.position.set(0, 5, 8);
+    this.scene.add(frontFill);
+
+    // Studio Environment for specular reflections
     try {
       const studioEnv = TextureGenerator.createStudioEnvironment(this.renderer);
       this.scene.environment = studioEnv.texture;
@@ -123,21 +131,21 @@ export class ChessScene {
   }
 
   private setupTableAndBoard() {
-    // Rustic Wood Table Background (matches the vertical plank wood in the user's photo)
+    // 1. Rustic Wood Desk Background (matches vertical dark planks in photo)
     const tableTexture = TextureGenerator.createWoodTableTexture();
     const tableMat = new THREE.MeshStandardMaterial({
       map: tableTexture,
-      roughness: 0.85,
-      metalness: 0.05
+      roughness: 0.88,
+      metalness: 0.04
     });
-    const tableGeo = new THREE.PlaneGeometry(32, 32);
+    const tableGeo = new THREE.PlaneGeometry(36, 36);
     this.tableMesh = new THREE.Mesh(tableGeo, tableMat);
     this.tableMesh.rotation.x = -Math.PI / 2;
     this.tableMesh.position.y = -0.22;
     this.tableMesh.receiveShadow = true;
     this.scene.add(this.tableMesh);
 
-    // 3D Chessboard Box
+    // 2. 3D Chessboard Box
     this.buildBoard();
   }
 
@@ -148,28 +156,28 @@ export class ChessScene {
       this.boardMesh = null;
     }
 
-    const boardWidth = 8.7;
+    const boardWidth = 8.8;
     const boardThickness = 0.44;
     const boardGeo = new THREE.BoxGeometry(boardWidth, boardThickness, boardWidth);
 
-    // Top face is checkerboard with coordinates
-    const boardTopTexture = TextureGenerator.createChessboardTexture(this.boardTheme, this.showCoordinates);
+    // Top face is photorealistic checkerboard with coordinates
+    const topTexture = TextureGenerator.createChessboardTexture(this.boardTheme, this.showCoordinates);
     const topMat = new THREE.MeshStandardMaterial({
-      map: boardTopTexture,
-      roughness: 0.32,
+      map: topTexture,
+      roughness: 0.30,
       metalness: 0.04
     });
 
-    // Sides are dark warm mahogany bevel
+    // Sides are dark warm mahogany bevel (matches photo)
     const sideMat = new THREE.MeshStandardMaterial({
-      color: this.boardTheme === 'obsidian-marble' ? 0x111827 : (this.boardTheme === 'tournament-blue' ? 0x1e3a5f : 0x3e2316),
-      roughness: 0.4,
-      metalness: 0.08
+      color: 0x3d2214,
+      roughness: 0.45,
+      metalness: 0.06
     });
 
-    const bottomMat = new THREE.MeshStandardMaterial({ color: 0x100b08, roughness: 0.9 });
+    const bottomMat = new THREE.MeshStandardMaterial({ color: 0x120a06, roughness: 0.9 });
 
-    // Order: +X, -X, +Y, -Y, +Z, -Z
+    // Materials order: +X, -X, +Y (top), -Y (bottom), +Z (front), -Z (back)
     const materials = [sideMat, sideMat, topMat, bottomMat, sideMat, sideMat];
     this.boardMesh = new THREE.Mesh(boardGeo, materials);
     this.boardMesh.position.y = 0;
@@ -184,39 +192,39 @@ export class ChessScene {
 
     switch (this.pieceTheme) {
       case 'classic-wood': {
-        // Authentic Polished Wood (Ivory cream & dark charcoal walnut - matching the photo!)
+        // PHOTO MATCH: Polished Ivory/Cream and Glossy Obsidian Black Wood
         if (isWhite) {
           return new THREE.MeshStandardMaterial({
-            color: 0xf5eedb,
-            roughness: 0.22,
-            metalness: 0.05
+            color: 0xf6f0e2, // warm creamy ivory
+            roughness: 0.18,
+            metalness: 0.04
           });
         } else {
           return new THREE.MeshStandardMaterial({
-            color: 0x221a16,
-            roughness: 0.25,
-            metalness: 0.05
+            color: 0x17181c, // deep jet black lacquer with rim highlight
+            roughness: 0.14,
+            metalness: 0.08
           });
         }
       }
 
       case 'liquid-glass': {
-        // High refraction transmission glass
+        // Liquid Glass with high refraction & transmission
         if (isWhite) {
           return new THREE.MeshPhysicalMaterial({
-            color: 0xf4f9ff,
+            color: 0xf5faff,
             transmission: 0.94,
             opacity: 1,
             transparent: true,
-            roughness: 0.04,
+            roughness: 0.03,
             ior: 1.54,
-            thickness: 1.4,
+            thickness: 1.5,
             specularIntensity: 1.0,
             specularColor: new THREE.Color(0xffffff),
-            attenuationColor: new THREE.Color(0xd2eaff),
+            attenuationColor: new THREE.Color(0xd2ecff),
             attenuationDistance: 2.0,
             clearcoat: 1.0,
-            clearcoatRoughness: 0.04,
+            clearcoatRoughness: 0.03,
             envMapIntensity: 2.2
           });
         } else {
@@ -225,7 +233,7 @@ export class ChessScene {
             transmission: 0.86,
             opacity: 1,
             transparent: true,
-            roughness: 0.06,
+            roughness: 0.05,
             ior: 1.56,
             thickness: 1.8,
             specularIntensity: 1.0,
@@ -233,7 +241,7 @@ export class ChessScene {
             attenuationColor: new THREE.Color(0x182436),
             attenuationDistance: 1.2,
             clearcoat: 1.0,
-            clearcoatRoughness: 0.05,
+            clearcoatRoughness: 0.04,
             envMapIntensity: 1.8
           });
         }
@@ -281,8 +289,8 @@ export class ChessScene {
 
   // --- SQUARE / POSITION MAPPING ---
   public squareToPosition(square: Square): THREE.Vector3 {
-    let file = square.charCodeAt(0) - 97; // 0..7
-    let rank = parseInt(square[1], 10) - 1; // 0..7
+    let file = square.charCodeAt(0) - 97;
+    let rank = parseInt(square[1], 10) - 1;
 
     if (this.isFlipped) {
       file = 7 - file;
@@ -292,7 +300,7 @@ export class ChessScene {
     const squareSize = 1.0;
     const x = (file - 3.5) * squareSize;
     const z = (3.5 - rank) * squareSize;
-    const y = 0.22; // rests on board surface
+    const y = 0.22;
 
     return new THREE.Vector3(x, y, z);
   }
@@ -340,15 +348,12 @@ export class ChessScene {
             }
             this.createPieceMesh(square, piece.type, piece.color);
           } else {
-            // Ensure position is updated (in case board flipped)
-            const targetPos = this.squareToPosition(square);
-            existingMesh.position.copy(targetPos);
+            existingMesh.position.copy(this.squareToPosition(square));
           }
         }
       }
     }
 
-    // Remove deleted pieces
     for (const [sq, mesh] of this.piecesMap.entries()) {
       if (!activeSquares.has(sq)) {
         this.scene.remove(mesh);
@@ -356,7 +361,6 @@ export class ChessScene {
       }
     }
 
-    // Update check indicator
     this.updateCheckIndicator(game);
   }
 
@@ -371,7 +375,7 @@ export class ChessScene {
 
     mesh.position.copy(this.squareToPosition(square));
 
-    // Orientation: Knights face inward toward the opponent
+    // Knights face inward toward the board center
     if (type === 'n') {
       mesh.rotation.y = color === 'w' ? 0 : Math.PI;
     }
@@ -381,7 +385,7 @@ export class ChessScene {
     return mesh;
   }
 
-  // --- MOVE ANIMATION ---
+  // --- ANIMATED PIECE MOVE ---
   public animateMove(from: Square, to: Square, onFinish?: () => void) {
     const mesh = this.piecesMap.get(from);
     if (!mesh) {
@@ -402,7 +406,7 @@ export class ChessScene {
     const startPos = mesh.position.clone();
     const endPos = this.squareToPosition(to);
     const startTime = performance.now();
-    const duration = 260; // crisp, responsive 260ms animation
+    const duration = 240;
 
     const animStep = () => {
       const elapsed = performance.now() - startTime;
@@ -423,7 +427,7 @@ export class ChessScene {
     animStep();
   }
 
-  // --- HIGHLIGHTS (LEGAL MOVES, LAST MOVE, SELECTED) ---
+  // --- HIGHLIGHTS ---
   public setSelection(selected: Square | null, legal: Square[]) {
     this.selectedSquare = selected;
     this.legalMoves = legal;
@@ -447,20 +451,14 @@ export class ChessScene {
       }
     }
 
-    // 1. Last move tiles (soft golden glow)
-    if (this.lastFrom) {
-      this.addSquareTile(this.lastFrom, 0xf59e0b, 0.32);
-    }
-    if (this.lastTo) {
-      this.addSquareTile(this.lastTo, 0xf59e0b, 0.42);
-    }
+    // Last move subtle gold highlights
+    if (this.lastFrom) this.addSquareTile(this.lastFrom, 0xf59e0b, 0.28);
+    if (this.lastTo) this.addSquareTile(this.lastTo, 0xf59e0b, 0.36);
 
-    // 2. Selected square
-    if (this.selectedSquare) {
-      this.addSquareTile(this.selectedSquare, 0x10b981, 0.48);
-    }
+    // Selected square
+    if (this.selectedSquare) this.addSquareTile(this.selectedSquare, 0x10b981, 0.42);
 
-    // 3. Legal move dots and capture rings
+    // Legal move markers
     for (const sq of this.legalMoves) {
       const pos = this.squareToPosition(sq);
       const isCapture = this.piecesMap.has(sq);
@@ -510,7 +508,7 @@ export class ChessScene {
     this.highlightGroup.add(mesh);
   }
 
-  // --- CHECK WARNING ---
+  // --- CHECK INDICATOR ---
   private updateCheckIndicator(game: Chess) {
     if (this.checkMesh) {
       this.scene.remove(this.checkMesh);
@@ -553,8 +551,8 @@ export class ChessScene {
     const group = new THREE.Group();
     const shaftGeo = new THREE.CylinderGeometry(0.05, 0.05, len - 0.35, 16);
     const mat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      emissive: 0x0284c7,
+      color: 0xf59e0b,
+      emissive: 0xd97706,
       emissiveIntensity: 0.8
     });
     const shaft = new THREE.Mesh(shaftGeo, mat);
@@ -598,7 +596,6 @@ export class ChessScene {
   // --- FLIP BOARD ---
   public flipBoard(isFlipped: boolean) {
     this.isFlipped = isFlipped;
-    // Update all pieces to their new rotated positions
     for (const [sq, mesh] of this.piecesMap.entries()) {
       mesh.position.copy(this.squareToPosition(sq));
     }
@@ -611,15 +608,15 @@ export class ChessScene {
       this.camera.position.copy(this.PHOTO_CAMERA_POS);
       this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
     } else if (mode === 'topdown') {
-      this.camera.position.set(0, 15, 0.01);
+      this.camera.position.set(0, 14, 0.01);
       this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
     } else {
-      this.camera.position.set(0, 11, 6.5);
+      this.camera.position.set(0, 10.6, 6.0);
       this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
     }
   }
 
-  // --- ACCURATE SQUARE-BASED INTERACTIVITY & DRAG-AND-DROP ---
+  // --- ACCURATE INTERACTION & DRAG-AND-DROP ---
   private setupInteractivity() {
     const dom = this.renderer.domElement;
 
@@ -633,7 +630,7 @@ export class ChessScene {
 
       const pieceMesh = this.piecesMap.get(sq);
 
-      // If clicked a square with legal move while a piece was selected, execute!
+      // If clicking a legal target while a piece is selected
       if (this.selectedSquare && this.legalMoves.includes(sq)) {
         if (this.onMoveCallback) {
           this.onMoveCallback(this.selectedSquare, sq);
@@ -641,7 +638,7 @@ export class ChessScene {
         return;
       }
 
-      // If clicked a friendly piece, initiate drag & selection
+      // If clicking friendly piece
       if (pieceMesh) {
         this.dragStartSquare = sq;
         this.draggedMesh = pieceMesh;
@@ -663,13 +660,12 @@ export class ChessScene {
         this.isDragging = true;
       }
 
-      // Smooth piece drag follow
       if (this.isDragging && this.draggedMesh) {
         const boardIntersect = this.getBoardIntersect(e);
         if (boardIntersect) {
           this.draggedMesh.position.x = boardIntersect.x;
           this.draggedMesh.position.z = boardIntersect.z;
-          this.draggedMesh.position.y = 0.65; // elevated while dragged
+          this.draggedMesh.position.y = 0.65;
         }
       }
     });
@@ -682,7 +678,6 @@ export class ChessScene {
         const dropSquare = this.getSquareFromPointer(e);
 
         if (dropSquare && this.legalMoves.includes(dropSquare)) {
-          // Drop onto valid destination square!
           const from = this.dragStartSquare;
           this.draggedMesh = null;
           this.dragStartSquare = null;
@@ -690,13 +685,11 @@ export class ChessScene {
             this.onMoveCallback(from, dropSquare);
           }
         } else {
-          // Snap back to start position
           this.draggedMesh.position.copy(this.dragStartPosition);
           this.draggedMesh = null;
           this.dragStartSquare = null;
         }
       } else {
-        // Simple click without drag
         if (this.draggedMesh) {
           this.draggedMesh.position.copy(this.dragStartPosition);
           this.draggedMesh = null;

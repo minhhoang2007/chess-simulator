@@ -2,9 +2,8 @@ import * as THREE from 'three';
 import { PieceSymbol } from 'chess.js';
 
 /**
- * Compact, tournament-proportioned Staunton chess pieces
- * designed specifically for 3D/2.5D top-down perspective so
- * pieces never block or occlude squares behind them.
+ * Authentic tournament Staunton chess geometries precisely shaped
+ * to match the pieces in the user's reference photo.
  */
 export class StauntonGeometryFactory {
   private static geometries: Map<PieceSymbol, THREE.BufferGeometry> = new Map();
@@ -43,116 +42,116 @@ export class StauntonGeometryFactory {
     return geom.clone();
   }
 
-  // --- PAWN (Height ~0.65, Base Radius ~0.30) ---
+  // --- PAWN ---
   private static createPawn(): THREE.BufferGeometry {
     const points: THREE.Vector2[] = [];
-    const segments = 32;
+    const segments = 36;
 
-    // Base
+    // Stepped circular base
     points.push(new THREE.Vector2(0, 0));
-    points.push(new THREE.Vector2(0.28, 0));
-    points.push(new THREE.Vector2(0.28, 0.04));
-    points.push(new THREE.Vector2(0.24, 0.08));
-    points.push(new THREE.Vector2(0.20, 0.12));
+    points.push(new THREE.Vector2(0.30, 0));
+    points.push(new THREE.Vector2(0.30, 0.04));
+    points.push(new THREE.Vector2(0.26, 0.08));
+    points.push(new THREE.Vector2(0.26, 0.11));
+    points.push(new THREE.Vector2(0.21, 0.16));
 
-    // Waist
-    points.push(new THREE.Vector2(0.12, 0.24));
-    points.push(new THREE.Vector2(0.10, 0.38));
+    // Concave slender body
+    points.push(new THREE.Vector2(0.13, 0.28));
+    points.push(new THREE.Vector2(0.11, 0.44));
 
-    // Neck Collar Ring
-    points.push(new THREE.Vector2(0.15, 0.42));
-    points.push(new THREE.Vector2(0.16, 0.45));
-    points.push(new THREE.Vector2(0.13, 0.47));
-    points.push(new THREE.Vector2(0.08, 0.49));
+    // Toroidal neck ring / collar
+    points.push(new THREE.Vector2(0.16, 0.48));
+    points.push(new THREE.Vector2(0.17, 0.51));
+    points.push(new THREE.Vector2(0.14, 0.54));
+    points.push(new THREE.Vector2(0.09, 0.56));
 
-    // Head Sphere
-    const headRadius = 0.14;
-    const headY = 0.62;
-    for (let i = 0; i <= 14; i++) {
-      const angle = -Math.PI / 2 + (i / 14) * Math.PI;
-      const x = Math.cos(angle) * headRadius;
-      const y = headY + Math.sin(angle) * headRadius;
+    // Spherical head
+    const r = 0.15;
+    const cy = 0.70;
+    for (let i = 0; i <= 16; i++) {
+      const angle = -Math.PI / 2 + (i / 16) * Math.PI;
+      const x = Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
       if (x >= 0) points.push(new THREE.Vector2(x, y));
     }
-    points.push(new THREE.Vector2(0, headY + headRadius));
+    points.push(new THREE.Vector2(0, cy + r));
 
     return new THREE.LatheGeometry(points, segments);
   }
 
-  // --- ROOK (Height ~0.76, Base Radius ~0.32) ---
+  // --- ROOK ---
   private static createRook(): THREE.BufferGeometry {
     const points: THREE.Vector2[] = [];
-    const segments = 32;
+    const segments = 36;
 
-    // Base
+    // Stepped base
     points.push(new THREE.Vector2(0, 0));
-    points.push(new THREE.Vector2(0.31, 0));
-    points.push(new THREE.Vector2(0.31, 0.05));
-    points.push(new THREE.Vector2(0.26, 0.10));
-    points.push(new THREE.Vector2(0.22, 0.15));
+    points.push(new THREE.Vector2(0.32, 0));
+    points.push(new THREE.Vector2(0.32, 0.05));
+    points.push(new THREE.Vector2(0.28, 0.10));
+    points.push(new THREE.Vector2(0.24, 0.16));
 
-    // Tower Column
-    points.push(new THREE.Vector2(0.18, 0.35));
-    points.push(new THREE.Vector2(0.17, 0.55));
+    // Tapered cylindrical column
+    points.push(new THREE.Vector2(0.19, 0.35));
+    points.push(new THREE.Vector2(0.18, 0.60));
 
-    // Machicolation flare
-    points.push(new THREE.Vector2(0.23, 0.62));
-    points.push(new THREE.Vector2(0.24, 0.67));
-    points.push(new THREE.Vector2(0.23, 0.78));
+    // Flared machicolations rim
+    points.push(new THREE.Vector2(0.24, 0.68));
+    points.push(new THREE.Vector2(0.26, 0.74));
+    points.push(new THREE.Vector2(0.25, 0.88));
 
-    // Top Rim & Inside hollow
-    points.push(new THREE.Vector2(0.18, 0.78));
-    points.push(new THREE.Vector2(0.18, 0.70));
-    points.push(new THREE.Vector2(0, 0.70));
+    // Top battlements rim to hollow inside
+    points.push(new THREE.Vector2(0.20, 0.88));
+    points.push(new THREE.Vector2(0.19, 0.78));
+    points.push(new THREE.Vector2(0, 0.78));
 
     return new THREE.LatheGeometry(points, segments);
   }
 
-  // --- KNIGHT (Height ~0.84, Base Radius ~0.31) ---
+  // --- KNIGHT ---
   private static createKnight(): THREE.BufferGeometry {
     // 1. Pedestal Base
     const basePoints: THREE.Vector2[] = [
       new THREE.Vector2(0, 0),
-      new THREE.Vector2(0.31, 0),
-      new THREE.Vector2(0.31, 0.05),
-      new THREE.Vector2(0.26, 0.10),
-      new THREE.Vector2(0.23, 0.16),
-      new THREE.Vector2(0.17, 0.24),
-      new THREE.Vector2(0.19, 0.28),
+      new THREE.Vector2(0.32, 0),
+      new THREE.Vector2(0.32, 0.05),
+      new THREE.Vector2(0.28, 0.10),
+      new THREE.Vector2(0.25, 0.16),
+      new THREE.Vector2(0.19, 0.24),
+      new THREE.Vector2(0.21, 0.28),
       new THREE.Vector2(0, 0.28)
     ];
-    const baseGeom = new THREE.LatheGeometry(basePoints, 28);
+    const baseGeom = new THREE.LatheGeometry(basePoints, 32);
 
     // 2. Horse Head Shape
-    const s = 0.65; // scale factor
-    const horseShape = new THREE.Shape();
-    horseShape.moveTo(-0.16 * s, 0.26);
+    const s = 0.70;
+    const horse = new THREE.Shape();
+    horse.moveTo(-0.16 * s, 0.28);
     // Chest
-    horseShape.quadraticCurveTo(0.20 * s, 0.35, 0.24 * s, 0.60);
+    horse.quadraticCurveTo(0.22 * s, 0.38, 0.25 * s, 0.65);
     // Jaw and Muzzle
-    horseShape.lineTo(0.30 * s, 0.70);
-    horseShape.lineTo(0.28 * s, 0.80);
-    horseShape.lineTo(0.16 * s, 0.88);
+    horse.lineTo(0.32 * s, 0.75);
+    horse.lineTo(0.30 * s, 0.86);
+    horse.lineTo(0.18 * s, 0.95);
     // Forehead
-    horseShape.lineTo(0.08 * s, 0.95);
+    horse.lineTo(0.09 * s, 1.02);
     // Ear tip
-    horseShape.lineTo(0.06 * s, 1.15);
-    horseShape.lineTo(-0.02 * s, 1.05);
-    // Mane / Back of neck
-    horseShape.quadraticCurveTo(-0.24 * s, 0.85, -0.22 * s, 0.55);
-    horseShape.quadraticCurveTo(-0.20 * s, 0.35, -0.16 * s, 0.26);
+    horse.lineTo(0.07 * s, 1.22);
+    horse.lineTo(-0.02 * s, 1.12);
+    // Mane / Back of neck curve
+    horse.quadraticCurveTo(-0.25 * s, 0.90, -0.23 * s, 0.60);
+    horse.quadraticCurveTo(-0.21 * s, 0.38, -0.16 * s, 0.28);
 
-    const headGeom = new THREE.ExtrudeGeometry(horseShape, {
-      depth: 0.18,
+    const headGeom = new THREE.ExtrudeGeometry(horse, {
+      depth: 0.20,
       bevelEnabled: true,
       bevelSegments: 3,
       steps: 1,
       bevelSize: 0.03,
       bevelThickness: 0.03
     });
-    headGeom.translate(0, 0, -0.12);
+    headGeom.translate(0, 0, -0.13);
 
-    // Merge non-indexed buffer geometries
     const b1 = baseGeom.toNonIndexed();
     const b2 = headGeom.toNonIndexed();
     const p1 = b1.attributes.position.array;
@@ -167,121 +166,119 @@ export class StauntonGeometryFactory {
     return result;
   }
 
-  // --- BISHOP (Height ~0.94, Base Radius ~0.31) ---
+  // --- BISHOP ---
   private static createBishop(): THREE.BufferGeometry {
     const points: THREE.Vector2[] = [];
-    const segments = 32;
+    const segments = 36;
 
     // Base
     points.push(new THREE.Vector2(0, 0));
-    points.push(new THREE.Vector2(0.31, 0));
-    points.push(new THREE.Vector2(0.31, 0.05));
-    points.push(new THREE.Vector2(0.26, 0.10));
-    points.push(new THREE.Vector2(0.22, 0.16));
+    points.push(new THREE.Vector2(0.32, 0));
+    points.push(new THREE.Vector2(0.32, 0.05));
+    points.push(new THREE.Vector2(0.28, 0.10));
+    points.push(new THREE.Vector2(0.24, 0.17));
 
-    // Slender Stem
-    points.push(new THREE.Vector2(0.13, 0.35));
-    points.push(new THREE.Vector2(0.12, 0.52));
+    // Slender Body
+    points.push(new THREE.Vector2(0.14, 0.38));
+    points.push(new THREE.Vector2(0.13, 0.58));
 
     // Neck Collar
-    points.push(new THREE.Vector2(0.17, 0.57));
-    points.push(new THREE.Vector2(0.16, 0.61));
+    points.push(new THREE.Vector2(0.19, 0.64));
+    points.push(new THREE.Vector2(0.18, 0.68));
 
     // Miter Teardrop
-    points.push(new THREE.Vector2(0.19, 0.68));
-    points.push(new THREE.Vector2(0.20, 0.78));
-    points.push(new THREE.Vector2(0.17, 0.88));
-    points.push(new THREE.Vector2(0.08, 0.98));
+    points.push(new THREE.Vector2(0.21, 0.76));
+    points.push(new THREE.Vector2(0.22, 0.88));
+    points.push(new THREE.Vector2(0.19, 0.98));
+    points.push(new THREE.Vector2(0.09, 1.10));
 
-    // Small Top Finial Bead
-    points.push(new THREE.Vector2(0.06, 1.02));
-    points.push(new THREE.Vector2(0.06, 1.06));
-    points.push(new THREE.Vector2(0.02, 1.09));
-    points.push(new THREE.Vector2(0, 1.10));
+    // Finial Sphere
+    points.push(new THREE.Vector2(0.07, 1.14));
+    points.push(new THREE.Vector2(0.07, 1.18));
+    points.push(new THREE.Vector2(0.03, 1.21));
+    points.push(new THREE.Vector2(0, 1.22));
 
-    // Scale to ~0.92
     const lathe = new THREE.LatheGeometry(points, segments);
-    lathe.scale(0.85, 0.85, 0.85);
+    lathe.scale(0.88, 0.88, 0.88);
     return lathe;
   }
 
-  // --- QUEEN (Height ~1.08, Base Radius ~0.33) ---
+  // --- QUEEN ---
   private static createQueen(): THREE.BufferGeometry {
     const points: THREE.Vector2[] = [];
     const segments = 36;
 
     // Base
     points.push(new THREE.Vector2(0, 0));
-    points.push(new THREE.Vector2(0.33, 0));
-    points.push(new THREE.Vector2(0.33, 0.05));
-    points.push(new THREE.Vector2(0.28, 0.10));
-    points.push(new THREE.Vector2(0.23, 0.17));
+    points.push(new THREE.Vector2(0.34, 0));
+    points.push(new THREE.Vector2(0.34, 0.05));
+    points.push(new THREE.Vector2(0.30, 0.11));
+    points.push(new THREE.Vector2(0.25, 0.18));
 
     // Waist
-    points.push(new THREE.Vector2(0.14, 0.40));
-    points.push(new THREE.Vector2(0.13, 0.68));
+    points.push(new THREE.Vector2(0.15, 0.44));
+    points.push(new THREE.Vector2(0.14, 0.74));
 
-    // Collar
-    points.push(new THREE.Vector2(0.19, 0.74));
-    points.push(new THREE.Vector2(0.18, 0.79));
+    // Double Collar
+    points.push(new THREE.Vector2(0.21, 0.82));
+    points.push(new THREE.Vector2(0.19, 0.87));
 
     // Flared Coronet
-    points.push(new THREE.Vector2(0.16, 0.88));
-    points.push(new THREE.Vector2(0.24, 1.05));
-    points.push(new THREE.Vector2(0.26, 1.14));
-    points.push(new THREE.Vector2(0.17, 1.12));
-    points.push(new THREE.Vector2(0.08, 1.14));
+    points.push(new THREE.Vector2(0.18, 0.96));
+    points.push(new THREE.Vector2(0.26, 1.15));
+    points.push(new THREE.Vector2(0.28, 1.26));
+    points.push(new THREE.Vector2(0.19, 1.24));
+    points.push(new THREE.Vector2(0.09, 1.26));
 
-    // Pearl Bead
-    points.push(new THREE.Vector2(0.07, 1.20));
-    points.push(new THREE.Vector2(0.04, 1.25));
-    points.push(new THREE.Vector2(0, 1.26));
+    // Pearl Finial
+    points.push(new THREE.Vector2(0.08, 1.32));
+    points.push(new THREE.Vector2(0.04, 1.37));
+    points.push(new THREE.Vector2(0, 1.38));
 
     const lathe = new THREE.LatheGeometry(points, segments);
-    lathe.scale(0.86, 0.86, 0.86);
+    lathe.scale(0.88, 0.88, 0.88);
     return lathe;
   }
 
-  // --- KING (Height ~1.20, Base Radius ~0.34) ---
+  // --- KING ---
   private static createKing(): THREE.BufferGeometry {
     const points: THREE.Vector2[] = [];
     const segments = 36;
 
     // Stately Base
     points.push(new THREE.Vector2(0, 0));
-    points.push(new THREE.Vector2(0.34, 0));
-    points.push(new THREE.Vector2(0.34, 0.06));
-    points.push(new THREE.Vector2(0.29, 0.11));
-    points.push(new THREE.Vector2(0.24, 0.18));
+    points.push(new THREE.Vector2(0.35, 0));
+    points.push(new THREE.Vector2(0.35, 0.06));
+    points.push(new THREE.Vector2(0.31, 0.11));
+    points.push(new THREE.Vector2(0.26, 0.19));
 
-    // Waist
-    points.push(new THREE.Vector2(0.16, 0.44));
-    points.push(new THREE.Vector2(0.15, 0.74));
+    // Body
+    points.push(new THREE.Vector2(0.17, 0.48));
+    points.push(new THREE.Vector2(0.16, 0.80));
 
-    // Double Collar
-    points.push(new THREE.Vector2(0.22, 0.80));
-    points.push(new THREE.Vector2(0.19, 0.85));
-    points.push(new THREE.Vector2(0.21, 0.88));
+    // Collar
+    points.push(new THREE.Vector2(0.23, 0.88));
+    points.push(new THREE.Vector2(0.20, 0.94));
+    points.push(new THREE.Vector2(0.22, 0.97));
 
-    // Royal Crown Flare
-    points.push(new THREE.Vector2(0.18, 0.96));
-    points.push(new THREE.Vector2(0.25, 1.16));
-    points.push(new THREE.Vector2(0.27, 1.25));
-    points.push(new THREE.Vector2(0.18, 1.27));
-    points.push(new THREE.Vector2(0.06, 1.28));
-    points.push(new THREE.Vector2(0.06, 1.33));
-    points.push(new THREE.Vector2(0, 1.34));
+    // Royal Crown
+    points.push(new THREE.Vector2(0.19, 1.05));
+    points.push(new THREE.Vector2(0.27, 1.28));
+    points.push(new THREE.Vector2(0.29, 1.38));
+    points.push(new THREE.Vector2(0.19, 1.40));
+    points.push(new THREE.Vector2(0.07, 1.41));
+    points.push(new THREE.Vector2(0.07, 1.46));
+    points.push(new THREE.Vector2(0, 1.47));
 
     const kingBase = new THREE.LatheGeometry(points, segments);
 
-    // Cross Finial atop King
-    const crossV = new THREE.BoxGeometry(0.05, 0.18, 0.05);
-    crossV.translate(0, 1.42, 0);
+    // Cross finial
+    const crossV = new THREE.BoxGeometry(0.05, 0.20, 0.05);
+    crossV.translate(0, 1.55, 0);
 
-    const crossH = new THREE.BoxGeometry(0.14, 0.05, 0.05);
-    crossH.translate(0, 1.45, 0);
+    const crossH = new THREE.BoxGeometry(0.15, 0.05, 0.05);
+    crossH.translate(0, 1.58, 0);
 
-    // Merge
     const bBase = kingBase.toNonIndexed();
     const bV = crossV.toNonIndexed();
     const bH = crossH.toNonIndexed();
@@ -297,7 +294,7 @@ export class StauntonGeometryFactory {
 
     const kingGeom = new THREE.BufferGeometry();
     kingGeom.setAttribute('position', new THREE.BufferAttribute(total, 3));
-    kingGeom.scale(0.88, 0.88, 0.88);
+    kingGeom.scale(0.90, 0.90, 0.90);
     kingGeom.computeVertexNormals();
 
     return kingGeom;

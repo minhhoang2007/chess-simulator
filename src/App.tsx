@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Chess, Square, PieceSymbol, Color } from 'chess.js';
-import { BotProfile, CapturedPieces, EvaluationState, GameSettings, MoveRecord, TimeControl } from './types/chess';
+import { BotProfile, CapturedPieces, GameSettings, MoveRecord, TimeControl } from './types/chess';
 import { CHESS_COM_BOTS, TRANSLATIONS } from './locales/i18n';
 import { ChessScene } from './three/ChessScene';
 import { stockfishEngine } from './engine/stockfishEngine';
 import { sounds } from './audio/soundEffects';
-import { EvaluationBar } from './components/EvaluationBar';
-import { CapturedPiecesView } from './components/CapturedPiecesView';
 import { BotSelectorModal } from './components/BotSelectorModal';
 import { PromotionModal } from './components/PromotionModal';
 import { GameOverModal } from './components/GameOverModal';
@@ -14,15 +12,12 @@ import { MenuDrawer } from './components/MenuDrawer';
 import {
   Menu,
   RotateCcw,
-  Lightbulb,
-  Sparkles,
-  Timer as TimerIcon
+  Sparkles
 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  // Chess engine
+  // Core Chess State
   const [chess] = useState<Chess>(() => new Chess());
-  const [fen, setFen] = useState<string>(chess.fen());
   const [turn, setTurn] = useState<Color>('w');
   const [inCheck, setInCheck] = useState<boolean>(false);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
@@ -31,38 +26,37 @@ export const App: React.FC = () => {
   const [isBotThinking, setIsBotThinking] = useState<boolean>(false);
   const [hintInfo, setHintInfo] = useState<{ from: Square; to: Square } | null>(null);
 
-  // Settings
+  // Settings: 100% matched to reference photo
   const [settings, setSettings] = useState<GameSettings>({
     language: 'vi',
-    pieceTheme: 'classic-wood', // defaults to Classic Wood matching the user's reference photo!
-    boardTheme: 'rustic-wood',  // defaults to Rustic Wood matching the user's reference photo!
+    pieceTheme: 'classic-wood', // photo style: polished ivory & ebony wood
+    boardTheme: 'rustic-wood',  // photo style: authentic maple & walnut on rustic table
     soundEnabled: true,
     showCoordinates: true,
     showLegalMoves: true,
-    showEvaluationBar: true,
-    cameraTilt: 'photo'         // defaults to photo angle!
+    showEvaluationBar: false,   // COMPLETELY REMOVED from screen as requested
+    cameraTilt: 'photo'
   });
 
-  // Bot & Match Config
-  const [selectedBot, setSelectedBot] = useState<BotProfile>(CHESS_COM_BOTS[2]); // Nelson (1300)
+  // Current Bot: Defaults to beginner/Nelson
+  const [selectedBot, setSelectedBot] = useState<BotProfile>(CHESS_COM_BOTS[0]); // Jimmy (Beginner)
   const [playerColor, setPlayerColor] = useState<Color>('w');
   const [timeControl, setTimeControl] = useState<TimeControl>('unlimited');
   const [whiteTime, setWhiteTime] = useState<number>(300);
   const [blackTime, setBlackTime] = useState<number>(300);
 
-  // Moves & Stats
+  // Move History
   const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
   const [capturedPieces, setCapturedPieces] = useState<CapturedPieces>({ w: [], b: [] });
-  const [evaluation, setEvaluation] = useState<EvaluationState>({ type: 'cp', value: 0 });
 
-  // Modals & UI Drawers
+  // Drawers & Modals
   const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState<boolean>(false);
   const [isBotModalOpen, setIsBotModalOpen] = useState<boolean>(false);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
   const [isGameOverModalOpen, setIsGameOverModalOpen] = useState<boolean>(false);
   const [isResignConfirmOpen, setIsResignConfirmOpen] = useState<boolean>(false);
 
-  // 3D Scene Reference
+  // 3D Scene Refs
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<ChessScene | null>(null);
   const selectedSquareRef = useRef<Square | null>(null);
@@ -78,23 +72,13 @@ export const App: React.FC = () => {
     sceneRef.current = scene;
 
     scene.setTheme(settings.pieceTheme, settings.boardTheme, settings.showCoordinates);
-    scene.setCameraMode(settings.cameraTilt);
+    scene.setCameraMode('photo');
     scene.updateBoard(chess);
 
-    // Callbacks for piece selection and moves
     scene.setCallbacks(
       (square: Square) => handleSquareSelect(square),
       (from: Square, to: Square) => handleMoveAttempt(from, to)
     );
-
-    // Live Stockfish Evaluation
-    stockfishEngine.setEvaluationListener((ev) => {
-      const mult = chess.turn() === 'w' ? 1 : -1;
-      setEvaluation({
-        type: ev.type,
-        value: ev.value * mult
-      });
-    });
 
     return () => {
       scene.destroy();
@@ -114,7 +98,7 @@ export const App: React.FC = () => {
     }
   }, [settings.pieceTheme, settings.boardTheme, settings.showCoordinates, settings.cameraTilt]);
 
-  // 2. Timer Countdown
+  // 2. Clock Timer
   useEffect(() => {
     if (timeControl === 'unlimited' || isGameOver || moveHistory.length === 0) return;
 
@@ -145,7 +129,7 @@ export const App: React.FC = () => {
     setIsGameOver(true);
     const win = loser === 'w' ? 'b' : 'w';
     setWinner(win);
-    setGameOverReason(settings.language === 'vi' ? 'Hết giờ thi đấu!' : 'Flagged on time!');
+    setGameOverReason(settings.language === 'vi' ? 'Hết thời gian thi đấu!' : 'Flagged on time!');
     setIsGameOverModalOpen(true);
     if (win === playerColor) sounds.playVictory();
     else sounds.playDefeat();
@@ -167,7 +151,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // 4. User Moves or Drops Piece
+  // 4. Move Execution Attempt
   const handleMoveAttempt = (from: Square, to: Square) => {
     if (isGameOver || isBotThinking || chess.turn() !== playerColor) return;
 
@@ -175,7 +159,6 @@ export const App: React.FC = () => {
     const targetMove = moves.find((m) => m.to === to);
 
     if (targetMove) {
-      // Check for promotion
       if (
         targetMove.piece === 'p' &&
         ((targetMove.color === 'w' && to[1] === '8') || (targetMove.color === 'b' && to[1] === '1'))
@@ -183,7 +166,6 @@ export const App: React.FC = () => {
         setPendingPromotion({ from, to });
         return;
       }
-
       applyMove(from, to);
     } else {
       selectedSquareRef.current = null;
@@ -210,24 +192,17 @@ export const App: React.FC = () => {
       sceneRef.current?.clearHint();
       setHintInfo(null);
 
-      // Play sound
-      if (result.captured) {
-        sounds.playCapture();
-      } else if (result.san.includes('O-O')) {
-        sounds.playCastle();
-      } else if (chess.inCheck()) {
-        sounds.playCheck();
-      } else {
-        sounds.playMove();
-      }
+      // Play authentic move sound
+      if (result.captured) sounds.playCapture();
+      else if (result.san.includes('O-O')) sounds.playCastle();
+      else if (chess.inCheck()) sounds.playCheck();
+      else sounds.playMove();
 
-      // Animate 3D piece
+      // Animate piece
       sceneRef.current?.animateMove(from, to, () => {
         sceneRef.current?.updateBoard(chess);
       });
 
-      // Update states
-      setFen(chess.fen());
       setTurn(chess.turn());
       setInCheck(chess.inCheck());
 
@@ -251,7 +226,6 @@ export const App: React.FC = () => {
         });
       }
 
-      stockfishEngine.evaluatePosition(chess.fen());
       checkGameEnd();
 
       if (!chess.isGameOver() && chess.turn() !== playerColor) {
@@ -289,7 +263,6 @@ export const App: React.FC = () => {
             sceneRef.current?.updateBoard(chess);
           });
 
-          setFen(chess.fen());
           setTurn(chess.turn());
           setInCheck(chess.inCheck());
 
@@ -313,7 +286,6 @@ export const App: React.FC = () => {
             });
           }
 
-          stockfishEngine.evaluatePosition(chess.fen());
           checkGameEnd();
         }
       } catch (e) {
@@ -381,7 +353,6 @@ export const App: React.FC = () => {
     sceneRef.current?.flipBoard(flipped);
     sceneRef.current?.updateBoard(chess);
 
-    setFen(chess.fen());
     setTurn(chess.turn());
     setInCheck(false);
     setIsGameOver(false);
@@ -389,7 +360,6 @@ export const App: React.FC = () => {
     setGameOverReason('');
     setMoveHistory([]);
     setCapturedPieces({ w: [], b: [] });
-    setEvaluation({ type: 'cp', value: 0 });
     setHintInfo(null);
 
     setIsBotModalOpen(false);
@@ -414,15 +384,12 @@ export const App: React.FC = () => {
     sceneRef.current?.clearHint();
     sceneRef.current?.updateBoard(chess);
 
-    setFen(chess.fen());
     setTurn(chess.turn());
     setInCheck(chess.inCheck());
     setMoveHistory((prev) => prev.slice(0, Math.max(0, prev.length - undos)));
     setHintInfo(null);
 
     // Rebuild captured
-    const wCaptures: PieceSymbol[] = [];
-    const bCaptures: PieceSymbol[] = [];
     const full: PieceSymbol[] = ['p','p','p','p','p','p','p','p','r','r','n','n','b','b','q','k'];
     const wRem: PieceSymbol[] = [...full];
     const bRem: PieceSymbol[] = [...full];
@@ -439,8 +406,6 @@ export const App: React.FC = () => {
       w: bRem.filter((p): p is PieceSymbol => p !== 'k'),
       b: wRem.filter((p): p is PieceSymbol => p !== 'k')
     });
-
-    stockfishEngine.evaluatePosition(chess.fen());
   };
 
   // 10. Flip Board
@@ -475,164 +440,121 @@ export const App: React.FC = () => {
     sounds.playDefeat();
   };
 
-  // Current turn text for bottom bezel (matches reference photo: "1. White's move")
+  // Turn Text for bottom wooden rim (matches reference photo: "1. White's move")
   const currentMoveNumber = Math.floor(moveHistory.length / 2) + 1;
   const currentMoveText = turn === 'w'
-    ? t.whitesMoveText.replace('{num}', currentMoveNumber.toString())
-    : t.blacksMoveText.replace('{num}', currentMoveNumber.toString());
-
-  const formatClock = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
+    ? `${currentMoveNumber}. White's move`
+    : `${currentMoveNumber}. Black's move`;
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#140e0a] text-[#ede8e1] select-none font-sans">
-      {/* 3D Viewport (Full Screen Canvas) */}
+    <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#160f0a] text-[#ede8e1] select-none font-sans">
+      {/* 3D Viewport: Fullscreen wooden table & board */}
       <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full cursor-pointer" />
 
-      {/* Floating Evaluation Bar on Left Edge */}
-      {settings.showEvaluationBar && (
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-          <EvaluationBar evaluation={evaluation} language={settings.language} />
-        </div>
-      )}
-
-      {/* TOP-LEFT FLOATING CORNER CONTROLS (matches reference image: Menu ☰ & Flip ↻) */}
-      <div className="absolute top-4 left-4 z-30 flex flex-col gap-3">
-        {/* Menu Button */}
+      {/* ========================================================
+          TOP-LEFT CORNER ICONS (MATCHING USER REFERENCE PHOTO)
+          ======================================================== */}
+      <div className="absolute top-5 left-5 z-20 flex flex-col gap-3.5">
+        {/* 1. Hamburger Menu Button (Square with 3 white lines) */}
         <button
           onClick={() => setIsMenuDrawerOpen(true)}
-          className="w-11 h-11 rounded-lg bg-[#241a13]/85 hover:bg-[#38281d] border border-[#543c2c]/80 text-[#ede8e1] flex items-center justify-center shadow-2xl backdrop-blur-sm transition-all hover:scale-105 active:scale-95"
+          className="w-12 h-12 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95"
           title={t.menu}
         >
-          <Menu className="w-6 h-6 text-[#f5ebd9]" />
+          <Menu className="w-7 h-7 text-white stroke-[2.5]" />
         </button>
 
-        {/* Flip Board Button */}
+        {/* 2. Reset / Rotate / Flip Button (Circular arrow) */}
         <button
           onClick={handleFlip}
-          className="w-11 h-11 rounded-lg bg-[#241a13]/85 hover:bg-[#38281d] border border-[#543c2c]/80 text-[#ede8e1] flex items-center justify-center shadow-2xl backdrop-blur-sm transition-all hover:scale-105 active:scale-95 text-lg font-bold"
+          className="w-12 h-12 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95 text-2xl font-bold"
           title={t.flipBoard}
         >
-          ↻
+          <span className="text-white text-2xl -mt-0.5">↻</span>
         </button>
       </div>
 
-      {/* TOP-RIGHT FLOATING CORNER CONTROLS (matches reference image: Undo ↶, Piece theme, Hint 💡) */}
-      <div className="absolute top-4 right-4 z-30 flex flex-col gap-3 items-end">
-        {/* Undo Button */}
+      {/* ========================================================
+          TOP-RIGHT CORNER ICONS (MATCHING USER REFERENCE PHOTO)
+          ======================================================== */}
+      <div className="absolute top-5 right-5 z-20 flex flex-col gap-3.5 items-end">
+        {/* 1. Undo Button (Curved counterclockwise arrow) */}
         <button
           onClick={handleUndo}
           disabled={moveHistory.length === 0 || isBotThinking || isGameOver}
-          className="w-11 h-11 rounded-lg bg-[#241a13]/85 hover:bg-[#38281d] border border-[#543c2c]/80 text-[#ede8e1] flex items-center justify-center shadow-2xl backdrop-blur-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:pointer-events-none text-xl font-bold"
+          className="w-12 h-12 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95 disabled:opacity-25 disabled:pointer-events-none text-2xl font-bold"
           title={t.undo}
         >
-          ↶
+          <span className="text-white text-2xl -mt-1 font-bold">↶</span>
         </button>
 
-        {/* Piece Theme Toggle (quick toggle between Classic Wood & Liquid Glass!) */}
+        {/* 2. Piece Theme Toggle Button (Pawn outline / Liquid glass toggle) */}
         <button
           onClick={() => {
             const nextTheme = settings.pieceTheme === 'classic-wood' ? 'liquid-glass' : 'classic-wood';
             setSettings((s) => ({ ...s, pieceTheme: nextTheme }));
           }}
-          className="w-11 h-11 rounded-lg bg-[#241a13]/85 hover:bg-[#38281d] border border-[#543c2c]/80 text-[#ede8e1] flex items-center justify-center shadow-2xl backdrop-blur-sm transition-all hover:scale-105 active:scale-95"
-          title={settings.pieceTheme === 'classic-wood' ? 'Chuyển sang Thủy Tinh Lỏng' : 'Chuyển sang Gỗ Cổ Điển'}
+          className="w-12 h-12 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95"
+          title={settings.pieceTheme === 'classic-wood' ? 'Bật chế độ Thủy Tinh Lỏng' : 'Chuyển về Gỗ Cổ Điển'}
         >
-          <span className="text-xl">
-            {settings.pieceTheme === 'classic-wood' ? '♙' : '💎'}
-          </span>
+          {settings.pieceTheme === 'classic-wood' ? (
+            <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[2]">
+              {/* Clean pawn silhouette icon matching photo */}
+              <circle cx="12" cy="6" r="3" />
+              <path d="M9 10h6c0 3-1.5 5-1.5 7h3.5v3H7v-3h3.5c0-2-1.5-4-1.5-7z" />
+            </svg>
+          ) : (
+            <span className="text-2xl">💎</span>
+          )}
         </button>
 
-        {/* Hint Lightbulb Button */}
+        {/* 3. Lightbulb Hint Button (Outlined lightbulb) */}
         <button
           onClick={handleHint}
           disabled={isBotThinking || isGameOver || chess.turn() !== playerColor}
-          className="w-11 h-11 rounded-lg bg-[#241a13]/85 hover:bg-[#38281d] border border-[#543c2c]/80 text-[#ede8e1] flex items-center justify-center shadow-2xl backdrop-blur-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+          className="w-12 h-12 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95 disabled:opacity-25 disabled:pointer-events-none"
           title={t.hint}
         >
-          <Lightbulb className="w-5 h-5 text-[#f59e0b]" />
+          <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[2]">
+            <path d="M9 18h6m-4 3h2m-5-9a6 6 0 1 1 8 0c-.8.8-1.5 2-1.5 3h-5c0-1-.7-2.2-1.5-3z" />
+          </svg>
         </button>
       </div>
 
-      {/* Opponent Card Top (Subtle Chess.com style, visible above board) */}
-      <div className="absolute top-4 left-20 right-20 z-20 pointer-events-none flex justify-center">
-        <div className="pointer-events-auto flex items-center gap-3 px-3.5 py-1.5 rounded-lg bg-[#1f1610]/80 border border-[#3d2b1e] backdrop-blur-sm shadow-lg text-xs">
-          <span className="text-xl">{selectedBot.avatar}</span>
-          <div>
-            <div className="font-bold text-white flex items-center gap-1.5">
-              <span>{selectedBot.name}</span>
-              <span className="text-[10px] font-mono text-[#f59e0b]">({selectedBot.elo})</span>
-            </div>
-            <CapturedPiecesView captured={capturedPieces} color={playerColor === 'w' ? 'b' : 'w'} />
-          </div>
-          {isBotThinking && (
-            <span className="text-[11px] font-semibold text-[#f59e0b] animate-pulse flex items-center gap-1 ml-2">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#f59e0b] animate-ping" />
-              {t.botThinking}
-            </span>
-          )}
-          {timeControl !== 'unlimited' && (
-            <div className="ml-3 font-mono text-xs font-bold px-2 py-0.5 rounded bg-black/50 text-[#c7b8a7] flex items-center gap-1 border border-[#3d2b1e]">
-              <TimerIcon className="w-3 h-3 text-[#f59e0b]" />
-              <span>{formatClock(playerColor === 'w' ? blackTime : whiteTime)}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Hint Alert Notification */}
-      {hintInfo && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-[#1a2e3b]/90 border border-[#38bdf8]/50 text-[#bae6fd] text-xs font-bold px-4 py-1.5 rounded-full shadow-2xl animate-fadeIn flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#38bdf8]" />
-          <span>{t.hintMessage.replace('{move}', `${hintInfo.from.toUpperCase()} ➔ ${hintInfo.to.toUpperCase()}`)}</span>
-        </div>
-      )}
-
-      {/* Check Alert Notification */}
-      {inCheck && !isGameOver && (
-        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-[#3e1313]/90 border border-[#ef4444]/60 text-[#fca5a5] text-xs font-black px-4 py-1.5 rounded-full shadow-2xl animate-pulse tracking-wide">
-          {t.check}
-        </div>
-      )}
-
-      {/* BOTTOM BEVEL OVERLAY (matches the exact text from reference photo!) */}
-      <div className="absolute bottom-2 left-0 right-0 z-20 pointer-events-none flex justify-center px-4">
-        <div className="w-full max-w-xl flex items-center justify-between text-xs font-serif tracking-wider uppercase text-[#c2aba0] opacity-85 select-none drop-shadow">
-          {/* Left Bevel Text (Bot name & Elo) */}
-          <span className="font-bold tracking-widest text-[#d8c2b5]">
-            {selectedBot.name.toUpperCase()} LEVEL ({selectedBot.elo})
+      {/* ========================================================
+          BOTTOM BEVEL TEXT (100% IDENTICAL TO REFERENCE PHOTO!)
+          "BEGINNER LEVEL" on the left, "1. White's move" on the right
+          ======================================================== */}
+      <div className="absolute bottom-2.5 left-0 right-0 z-20 pointer-events-none flex justify-center px-4">
+        <div className="w-full max-w-[560px] flex items-center justify-between text-[13px] tracking-wider text-[#d4c3b7] drop-shadow-md select-none font-serif">
+          {/* Left: Level / Bot Name (e.g. "BEGINNER LEVEL") */}
+          <span className="font-semibold tracking-widest text-[#e8dacd] uppercase opacity-90">
+            {selectedBot.id === 'jimmy' ? 'BEGINNER LEVEL' : `${selectedBot.name.toUpperCase()} (${selectedBot.elo})`}
           </span>
 
-          {/* Right Bevel Text (Turn status: e.g. "1. White's move") */}
-          <span className="italic font-sans text-xs tracking-normal lowercase first-letter:uppercase text-[#e6d8ce]">
+          {/* Right: Current Turn in Italic (e.g. "1. White's move") */}
+          <span className="italic font-serif text-[13px] tracking-wide text-[#eedfd2] opacity-95">
             {currentMoveText}
           </span>
         </div>
       </div>
 
-      {/* Player Card Bottom (Subtle, next to bottom edge) */}
-      <div className="absolute bottom-10 left-4 z-20 pointer-events-none hidden md:block">
-        <div className="pointer-events-auto flex items-center gap-3 px-3 py-1.5 rounded-lg bg-[#1f1610]/80 border border-[#3d2b1e] backdrop-blur-sm shadow-lg text-xs">
-          <span className="text-lg">♔</span>
-          <div>
-            <div className="font-bold text-white">
-              {playerColor === 'w' ? (settings.language === 'vi' ? 'Bạn (Trắng)' : 'You (White)') : (settings.language === 'vi' ? 'Bạn (Đen)' : 'You (Black)')}
-            </div>
-            <CapturedPiecesView captured={capturedPieces} color={playerColor} />
-          </div>
-          {timeControl !== 'unlimited' && (
-            <div className="ml-2 font-mono text-xs font-bold px-2 py-0.5 rounded bg-black/50 text-[#f59e0b] flex items-center gap-1 border border-[#3d2b1e]">
-              <TimerIcon className="w-3 h-3 text-[#f59e0b]" />
-              <span>{formatClock(playerColor === 'w' ? whiteTime : blackTime)}</span>
-            </div>
-          )}
+      {/* Subtle Hint Banner (only when Hint 💡 is tapped) */}
+      {hintInfo && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-black/75 border border-amber-400/60 text-amber-200 text-xs font-semibold px-4 py-1.5 rounded-full shadow-2xl animate-fadeIn flex items-center gap-2 backdrop-blur-sm">
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span>{hintInfo.from.toUpperCase()} ➔ {hintInfo.to.toUpperCase()}</span>
         </div>
-      </div>
+      )}
 
-      {/* SLIDE-OUT MENU DRAWER */}
+      {/* Check Alert Banner */}
+      {inCheck && !isGameOver && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-[#4a1010]/85 border border-red-500/70 text-red-200 text-xs font-bold px-4 py-1.5 rounded-full shadow-2xl animate-pulse tracking-wide backdrop-blur-sm">
+          {t.check}
+        </div>
+      )}
+
+      {/* SLIDE-OUT MENU DRAWER (Triggered by ☰ Button) */}
       <MenuDrawer
         isOpen={isMenuDrawerOpen}
         bot={selectedBot}

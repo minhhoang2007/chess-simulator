@@ -3,211 +3,259 @@ import { BoardTheme } from '../types/chess';
 
 export class TextureGenerator {
   /**
-   * Generates a realistic dark rustic wooden tabletop background texture
-   * matching the wooden plank desk in the reference image.
+   * Generates a high-resolution photorealistic dark rustic wood plank table texture
+   * matching the wood table background in the user's reference photo.
    */
   public static createWoodTableTexture(): THREE.CanvasTexture {
-    const size = 1024;
+    const width = 2048;
+    const height = 2048;
     const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d')!;
 
-    // Base dark oak / walnut wood color
-    ctx.fillStyle = '#261b14';
-    ctx.fillRect(0, 0, size, size);
+    // 1. Base dark walnut / weathered oak undertone
+    ctx.fillStyle = '#1e140d';
+    ctx.fillRect(0, 0, width, height);
 
-    // Draw wood planks
-    const plankWidth = size / 6;
-    for (let p = 0; p < 6; p++) {
-      const px = p * plankWidth;
+    // 2. Vertical wood planks (6 distinct wide planks)
+    const numPlanks = 6;
+    const plankW = width / numPlanks;
 
-      // Plank color variation
-      const tone = 0.9 + Math.sin(p * 2.5) * 0.12;
-      ctx.fillStyle = `rgb(${Math.floor(40 * tone)}, ${Math.floor(28 * tone)}, ${Math.floor(20 * tone)})`;
-      ctx.fillRect(px, 0, plankWidth, size);
+    for (let p = 0; p < numPlanks; p++) {
+      const px = p * plankW;
 
-      // Wood grain lines
-      ctx.strokeStyle = 'rgba(15, 10, 6, 0.4)';
-      ctx.lineWidth = 1.2;
-      for (let i = 0; i < 40; i++) {
-        const x = px + Math.random() * plankWidth;
+      // Plank color variation (warm dark oak to charcoal-brown)
+      const tones = [
+        { r: 38, g: 26, b: 18 },
+        { r: 48, g: 33, b: 23 },
+        { r: 32, g: 22, b: 15 },
+        { r: 44, g: 30, b: 21 },
+        { r: 35, g: 24, b: 17 },
+        { r: 42, g: 29, b: 20 }
+      ];
+      const tone = tones[p % tones.length];
+
+      ctx.fillStyle = `rgb(${tone.r}, ${tone.g}, ${tone.b})`;
+      ctx.fillRect(px, 0, plankW, height);
+
+      // Fine longitudinal wood grain fibers
+      const numFibers = 120;
+      for (let i = 0; i < numFibers; i++) {
+        const fx = px + Math.random() * plankW;
+        const alpha = 0.05 + Math.random() * 0.12;
+        const isDark = Math.random() > 0.4;
+        ctx.strokeStyle = isDark ? `rgba(10, 6, 4, ${alpha})` : `rgba(75, 55, 38, ${alpha})`;
+        ctx.lineWidth = 0.8 + Math.random() * 2.2;
+
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        const wave = (Math.random() - 0.5) * 15;
-        ctx.bezierCurveTo(x + wave, size * 0.33, x - wave, size * 0.66, x + wave * 0.5, size);
+        ctx.moveTo(fx, 0);
+        const wave1 = (Math.random() - 0.5) * 25;
+        const wave2 = (Math.random() - 0.5) * 25;
+        ctx.bezierCurveTo(
+          fx + wave1, height * 0.3,
+          fx + wave2, height * 0.7,
+          fx + wave1 * 0.6, height
+        );
         ctx.stroke();
       }
 
-      // Plank seam shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(px, 0, 2, size);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.fillRect(px + 2, 0, 1, size);
+      // Occasional wood knot or growth ring swirl
+      if (p === 1 || p === 4) {
+        const knotY = height * (p === 1 ? 0.35 : 0.7);
+        const knotX = px + plankW * 0.5;
+        for (let r = 5; r < 55; r += 7) {
+          ctx.strokeStyle = 'rgba(12, 7, 4, 0.18)';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.ellipse(knotX, knotY, r * 0.7, r * 1.8, (Math.random() - 0.5) * 0.1, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // Plank Seam: Left shadow line + Right highlight line
+      ctx.fillStyle = 'rgba(5, 3, 2, 0.85)';
+      ctx.fillRect(px, 0, 3, height);
+      ctx.fillStyle = 'rgba(255, 235, 200, 0.04)';
+      ctx.fillRect(px + 3, 0, 1.5, height);
     }
 
-    // Subtle vignette / ambient shading
-    const grad = ctx.createRadialGradient(size / 2, size / 2, size * 0.2, size / 2, size / 2, size * 0.7);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.65)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, size, size);
+    // 3. Subtle overall vignette for depth
+    const vignette = ctx.createRadialGradient(
+      width / 2, height / 2, width * 0.25,
+      width / 2, height / 2, width * 0.75
+    );
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(1, 'rgba(0,0,0,0.6)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, width, height);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(2, 2);
+    texture.generateMipmaps = true;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
     return texture;
   }
 
   /**
-   * Generates the 8x8 chessboard texture with wood grain for light & dark squares
-   * and border coordinates (A-H, 1-8).
+   * Generates a photorealistic 8x8 chessboard texture matching the photo:
+   * - Natural warm birch/maple for light squares
+   * - Rich dark walnut with vertical grain for dark squares
+   * - Outer beechwood border with thin black bounding rectangle
+   * - Bold black coordinates (A-H, 1-8) centered cleanly
    */
   public static createChessboardTexture(boardTheme: BoardTheme, showCoords: boolean = true): THREE.CanvasTexture {
-    const size = 1024;
+    const size = 2048;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d')!;
 
-    const borderSize = 64; // Border margin for letters and numbers
-    const boardSize = size - borderSize * 2;
-    const squareSize = boardSize / 8;
+    const borderSize = 110; // Outer frame margin
+    const boardArea = size - borderSize * 2;
+    const sqSize = boardArea / 8;
 
-    // Theme color palettes
-    let lightColor = '#dfcca8'; // Maple
-    let darkColor = '#6d452d';  // Walnut
-    let borderColor = '#bca17c';
-    let coordColor = '#3a2012';
-
-    if (boardTheme === 'obsidian-marble') {
-      lightColor = '#e2e8f0';
-      darkColor = '#1e293b';
-      borderColor = '#0f172a';
-      coordColor = '#94a3b8';
-    } else if (boardTheme === 'tournament-blue') {
-      lightColor = '#e0e7ee';
-      darkColor = '#3b6a98';
-      borderColor = '#203952';
-      coordColor = '#ffffff';
-    }
-
-    // Border background
-    ctx.fillStyle = borderColor;
+    // --- 1. Outer Wooden Frame ---
+    // Warm natural beechwood / light oak
+    ctx.fillStyle = '#c5a982';
     ctx.fillRect(0, 0, size, size);
 
-    // Inner bevel shadow around board
-    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(borderSize - 2, borderSize - 2, boardSize + 4, boardSize + 4);
+    // Frame wood grain
+    ctx.strokeStyle = 'rgba(120, 85, 50, 0.15)';
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 160; i++) {
+      const y = Math.random() * size;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.bezierCurveTo(size * 0.33, y + Math.random() * 10, size * 0.66, y - Math.random() * 10, size, y);
+      ctx.stroke();
+    }
 
-    // Draw 64 squares
+    // --- 2. Inner Black Border Line bounding the 64 squares ---
+    ctx.strokeStyle = '#18110b';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(borderSize, borderSize, boardArea, boardArea);
+
+    // --- 3. Render 64 Squares with Authentic Wood Grains ---
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const isLight = (row + col) % 2 === 0;
-        const x = borderSize + col * squareSize;
-        const y = borderSize + row * squareSize;
+        const x = borderSize + col * sqSize;
+        const y = borderSize + row * sqSize;
 
-        ctx.fillStyle = isLight ? lightColor : darkColor;
-        ctx.fillRect(x, y, squareSize, squareSize);
+        if (isLight) {
+          // LIGHT SQUARES: Warm Natural Maple / Birch (Matches photo: #d9c39e to #e4d2b2)
+          ctx.fillStyle = '#ddc7a3';
+          ctx.fillRect(x, y, sqSize, sqSize);
 
-        // Subtle realistic wood grain streaks if wood theme
-        if (boardTheme === 'rustic-wood') {
-          ctx.strokeStyle = isLight ? 'rgba(160, 130, 90, 0.18)' : 'rgba(40, 20, 10, 0.25)';
-          ctx.lineWidth = 1;
-          for (let k = 0; k < 6; k++) {
-            const gx = x + (k / 6) * squareSize + Math.random() * 4;
+          // Subtle horizontal maple grain streaks
+          ctx.strokeStyle = 'rgba(165, 135, 95, 0.22)';
+          ctx.lineWidth = 1.0;
+          for (let k = 0; k < 14; k++) {
+            const gy = y + (k / 14) * sqSize + (Math.random() - 0.5) * 4;
+            ctx.beginPath();
+            ctx.moveTo(x, gy);
+            ctx.lineTo(x + sqSize, gy + (Math.random() - 0.5) * 3);
+            ctx.stroke();
+          }
+
+          // Grain noise
+          for (let n = 0; n < 30; n++) {
+            ctx.fillStyle = 'rgba(180, 150, 110, 0.12)';
+            ctx.fillRect(x + Math.random() * sqSize, y + Math.random() * sqSize, 2, 2);
+          }
+        } else {
+          // DARK SQUARES: Rich Walnut / Teak (Matches photo: #6a432b to #754c32)
+          ctx.fillStyle = '#684128';
+          ctx.fillRect(x, y, sqSize, sqSize);
+
+          // Dark walnut vertical / diagonal grain
+          ctx.strokeStyle = 'rgba(40, 20, 10, 0.35)';
+          ctx.lineWidth = 1.2;
+          for (let k = 0; k < 18; k++) {
+            const gx = x + (k / 18) * sqSize + (Math.random() - 0.5) * 6;
             ctx.beginPath();
             ctx.moveTo(gx, y);
-            ctx.lineTo(gx + (Math.random() - 0.5) * 8, y + squareSize);
+            ctx.lineTo(gx + (Math.random() - 0.5) * 8, y + sqSize);
             ctx.stroke();
+          }
+
+          // Dark pore specks
+          ctx.fillStyle = 'rgba(25, 12, 5, 0.25)';
+          for (let n = 0; n < 25; n++) {
+            ctx.fillRect(x + Math.random() * sqSize, y + Math.random() * sqSize, 2, 3);
           }
         }
 
         // Faint border between squares
-        ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+        ctx.strokeStyle = 'rgba(20, 10, 5, 0.1)';
         ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, squareSize, squareSize);
+        ctx.strokeRect(x, y, sqSize, sqSize);
       }
     }
 
-    // Coordinates A-H and 1-8
+    // --- 4. Authentic Board Coordinates (A-H, 1-8) ---
     if (showCoords) {
-      ctx.fillStyle = coordColor;
-      ctx.font = 'bold 22px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = '#1e140d';
+      ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
       const files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
       const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
-      // Files (horizontal bottom and top)
+      // Files: A-H centered at bottom
       for (let c = 0; c < 8; c++) {
-        const x = borderSize + c * squareSize + squareSize / 2;
-        // Bottom file letters
-        ctx.fillText(files[c], x, size - borderSize / 2);
-        // Top file letters
-        ctx.fillText(files[c], x, borderSize / 2);
+        const fx = borderSize + c * sqSize + sqSize / 2;
+        ctx.fillText(files[c], fx, size - borderSize / 2);
       }
 
-      // Ranks (vertical left and right)
+      // Ranks: 1-8 centered along left and right borders
       for (let r = 0; r < 8; r++) {
-        const y = borderSize + r * squareSize + squareSize / 2;
-        // Left rank numbers
-        ctx.fillText(ranks[r], borderSize / 2, y);
-        // Right rank numbers
-        ctx.fillText(ranks[r], size - borderSize / 2, y);
+        const ry = borderSize + r * sqSize + sqSize / 2;
+        ctx.fillText(ranks[r], borderSize / 2, ry);
+        ctx.fillText(ranks[r], size - borderSize / 2, ry);
       }
     }
 
     const texture = new THREE.CanvasTexture(canvas);
+    texture.generateMipmaps = true;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
     return texture;
   }
 
   /**
-   * Generates a high dynamic range studio environment cubemap/texture
-   * so glass pieces exhibit breathtaking refraction, fresnel highlights, and reflections.
+   * Generates a studio cubemap so polished wood pieces and lacquer reflections
+   * show bright, natural specular curves matching the photo.
    */
   public static createStudioEnvironment(renderer: THREE.WebGLRenderer): THREE.WebGLRenderTarget {
     const scene = new THREE.Scene();
     const camera = new THREE.CubeCamera(0.1, 100, new THREE.WebGLCubeRenderTarget(256));
 
-    // Sky gradient sphere
     const sphereGeo = new THREE.SphereGeometry(20, 32, 32);
-    const sphereMat = new THREE.MeshBasicMaterial({
-      color: 0x18202d,
-      side: THREE.BackSide
-    });
-    const dome = new THREE.Mesh(sphereGeo, sphereMat);
-    scene.add(dome);
+    const sphereMat = new THREE.MeshBasicMaterial({ color: 0x1f1a16, side: THREE.BackSide });
+    scene.add(new THREE.Mesh(sphereGeo, sphereMat));
 
-    // Studio softbox light 1 (warm key light from top right)
+    // Warm key softbox (top-right)
     const softbox1 = new THREE.Mesh(
-      new THREE.PlaneGeometry(12, 12),
-      new THREE.MeshBasicMaterial({ color: 0xfff3e0, side: THREE.DoubleSide })
+      new THREE.PlaneGeometry(14, 14),
+      new THREE.MeshBasicMaterial({ color: 0xfff5ea, side: THREE.DoubleSide })
     );
-    softbox1.position.set(10, 14, 10);
+    softbox1.position.set(8, 14, 8);
     softbox1.lookAt(0, 0, 0);
     scene.add(softbox1);
 
-    // Studio softbox light 2 (cool rim light from back left)
+    // Cool rim softbox (top-left)
     const softbox2 = new THREE.Mesh(
       new THREE.PlaneGeometry(10, 10),
-      new THREE.MeshBasicMaterial({ color: 0xc8e6f5, side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({ color: 0xddeaff, side: THREE.DoubleSide })
     );
-    softbox2.position.set(-12, 10, -10);
+    softbox2.position.set(-10, 10, -6);
     softbox2.lookAt(0, 0, 0);
     scene.add(softbox2);
-
-    // Ceiling fill ring
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(4, 8, 24),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
-    );
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = 16;
-    scene.add(ring);
 
     camera.update(renderer, scene);
     return camera.renderTarget;
