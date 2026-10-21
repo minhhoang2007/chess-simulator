@@ -82,37 +82,42 @@ export class TextureGenerator {
     const sqSize = boardArea / 8;
 
     const isMarble = boardTheme === 'obsidian-marble';
-    ctx.fillStyle = isMarble ? '#1e293b' : '#1e3a5f';
+    // Chess.com authentic Tournament Blue & Ivory palette with warm wooden rim
+    ctx.fillStyle = isMarble ? '#1e293b' : '#2b1c13';
     ctx.fillRect(0, 0, size, size);
 
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 5;
-    ctx.strokeRect(borderSize, borderSize, boardArea, boardArea);
+    // Subtle inner gold/wood accent line
+    ctx.strokeStyle = isMarble ? '#334155' : '#543621';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(borderSize - 2, borderSize - 2, boardArea + 4, boardArea + 4);
 
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const isLight = (row + col) % 2 === 0;
         const x = borderSize + col * sqSize;
         const y = borderSize + row * sqSize;
+        // Chess.com authentic soft Ivory (#eaecd0) and classic Tournament Blue (#4b7399)
         ctx.fillStyle = isLight
-          ? (isMarble ? '#e2e8f0' : '#dee6ed')
-          : (isMarble ? '#334155' : '#3b6a98');
+          ? (isMarble ? '#e2e8f0' : '#eaecd0')
+          : (isMarble ? '#334155' : '#4b7399');
         ctx.fillRect(x, y, sqSize, sqSize);
       }
     }
 
     if (showCoords) {
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = 'bold 30px Helvetica, Arial, sans-serif';
+      ctx.font = 'bold 32px Helvetica, Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
       const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
       for (let c = 0; c < 8; c++) {
+        // Subtle gold-tinted coordinate letters matching the classroom wood tones
+        ctx.fillStyle = '#f5ede3';
         ctx.fillText(files[c], borderSize + c * sqSize + sqSize / 2, size - borderSize / 2);
       }
       for (let r = 0; r < 8; r++) {
         const ry = borderSize + r * sqSize + sqSize / 2;
+        ctx.fillStyle = '#f5ede3';
         ctx.fillText(ranks[r], borderSize / 2, ry);
         ctx.fillText(ranks[r], size - borderSize / 2, ry);
       }
@@ -140,6 +145,37 @@ export class TextureGenerator {
     ctx.fillRect(0, 0, size, size);
 
     return new THREE.CanvasTexture(canvas);
+  }
+
+  /**
+   * Generates a soft, realistic rectangular ambient occlusion shadow for the entire chessboard,
+   * with soft blurred falloff anchoring the 3D board directly onto the anime classroom desk.
+   */
+  public static createBoardShadowTexture(): THREE.CanvasTexture {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+
+    // Soft rounded shadow rectangle with gaussian-like blur falloff
+    const pad = 64;
+    const innerSize = size - pad * 2;
+    const cx = size / 2;
+    const cy = size / 2;
+
+    const grad = ctx.createRadialGradient(cx, cy, innerSize * 0.28, cx, cy, innerSize * 0.65);
+    grad.addColorStop(0, 'rgba(18, 12, 8, 0.78)');
+    grad.addColorStop(0.45, 'rgba(28, 16, 10, 0.52)');
+    grad.addColorStop(0.75, 'rgba(38, 24, 16, 0.22)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
   }
 
   public static createStudioEnvironment(renderer: THREE.WebGLRenderer): THREE.WebGLRenderTarget {

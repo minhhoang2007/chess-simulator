@@ -17,7 +17,7 @@ export class ChessScene {
   private boardTheme: BoardTheme = 'tournament-blue';
   private showCoordinates: boolean = true;
   private boardMesh: THREE.Mesh | null = null;
-  private tableMesh: THREE.Mesh | null = null;
+  private boardShadowMesh: THREE.Mesh | null = null;
   private highlightGroup: THREE.Group = new THREE.Group();
   private hintMesh: THREE.Group | null = null;
   private contactShadowTex: THREE.Texture;
@@ -112,12 +112,18 @@ export class ChessScene {
   }
 
   private setupLighting() {
-    const ambientLight = new THREE.AmbientLight(0xfffcf6, 1.6);
+    const ambientLight = new THREE.AmbientLight(0xfffaec, 1.6);
     this.scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xfffaf2, 1.3);
-    keyLight.position.set(-3.2, 12.5, 4.8);
+    // Warm golden afternoon keylight streaming from window (top-left)
+    const keyLight = new THREE.DirectionalLight(0xfff2dc, 1.55);
+    keyLight.position.set(-4.5, 13.5, 3.8);
     this.scene.add(keyLight);
+
+    // Soft room sky fill light
+    const fillLight = new THREE.DirectionalLight(0xdceaff, 0.65);
+    fillLight.position.set(4.5, 9.0, 5.0);
+    this.scene.add(fillLight);
 
     try {
       const studioEnv = TextureGenerator.createStudioEnvironment(this.renderer);
@@ -128,19 +134,19 @@ export class ChessScene {
   }
 
   private setupTableAndBoard() {
-    const maxAniso = this.renderer.capabilities.getMaxAnisotropy();
-
-    // 1. Authentic honed stone table framed within the anime classroom
-    const tableTexture = TextureGenerator.createWoodTableTexture(maxAniso);
-    const tableMat = new THREE.MeshBasicMaterial({
-      map: tableTexture,
-      toneMapped: false
+    // 1. Soft ambient contact shadow anchoring the board directly to the anime classroom desk
+    const shadowTex = TextureGenerator.createBoardShadowTexture();
+    const shadowMat = new THREE.MeshBasicMaterial({
+      map: shadowTex,
+      transparent: true,
+      opacity: 0.88,
+      depthWrite: false
     });
-    const tableGeo = new THREE.PlaneGeometry(16.8, 16.8);
-    this.tableMesh = new THREE.Mesh(tableGeo, tableMat);
-    this.tableMesh.rotation.x = -Math.PI / 2;
-    this.tableMesh.position.y = -0.22;
-    this.scene.add(this.tableMesh);
+    const shadowGeo = new THREE.PlaneGeometry(10.8, 10.8);
+    this.boardShadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+    this.boardShadowMesh.rotation.x = -Math.PI / 2;
+    this.boardShadowMesh.position.y = -0.222;
+    this.scene.add(this.boardShadowMesh);
 
     // 2. Authentic 1080p 3D Chessboard
     this.buildBoard();
@@ -165,19 +171,19 @@ export class ChessScene {
       toneMapped: false
     });
 
-    // Matching 3D side bezel color for each board theme
+    // Warm solid walnut wood bevel (matching the anime classroom desks and furniture)
     const sideColor =
       this.boardTheme === 'tournament-blue'
-        ? 0x15273e
+        ? 0x2e1d14 // Warm dark walnut wood bevel
         : this.boardTheme === 'obsidian-marble'
         ? 0x161f2e
-        : 0x261a12;
+        : 0x382218;
     const sideMat = new THREE.MeshBasicMaterial({
       color: sideColor,
       toneMapped: false
     });
 
-    const bottomMat = new THREE.MeshBasicMaterial({ color: 0x120a06, toneMapped: false });
+    const bottomMat = new THREE.MeshBasicMaterial({ color: 0x18100a, toneMapped: false });
 
     const materials = [sideMat, sideMat, topMat, bottomMat, sideMat, sideMat];
     this.boardMesh = new THREE.Mesh(boardGeo, materials);

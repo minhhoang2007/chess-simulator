@@ -530,12 +530,11 @@ export const App: React.FC = () => {
     <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#161512] text-[#f1f1f1] select-none font-sans">
       {/* 0. Roshidere (Alya Sometimes Hides Her Feelings in Russian) Anime Classroom Environment */}
       <div
-        className="absolute inset-0 bg-cover bg-center filter brightness-[0.96] contrast-[1.03]"
+        className="absolute inset-0 bg-cover bg-[center_62%] filter brightness-[1.02] contrast-[1.02] transition-all duration-700"
         style={{ backgroundImage: `url('/textures/alya_classroom_bg.jpg')` }}
       >
-        {/* Soft sunlight beams & warm vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-black/25 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/35 via-transparent to-black/25 pointer-events-none" />
+        {/* Soft warm anime sunlit vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/15 pointer-events-none" />
       </div>
 
       {/* Floating Sakura Cherry Blossom Petals */}
