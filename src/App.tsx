@@ -167,6 +167,13 @@ export const App: React.FC = () => {
   const handleSquareSelect = (square: Square) => {
     if (isGameOver || isBotThinking || chess.turn() !== playerColor) return;
 
+    // Toggle off: if user clicks the currently selected piece again, deselect it!
+    if (selectedSquareRef.current === square) {
+      selectedSquareRef.current = null;
+      sceneRef.current?.setSelection(null, []);
+      return;
+    }
+
     const piece = chess.get(square);
     if (piece && piece.color === playerColor) {
       selectedSquareRef.current = square;

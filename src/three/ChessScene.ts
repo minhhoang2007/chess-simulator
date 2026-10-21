@@ -460,11 +460,8 @@ export class ChessScene {
       }
     }
 
-    // Chess.com warm sunlit highlight for last move & selected square
-    if (this.lastFrom) this.addSquareTile(this.lastFrom, 0xf5f682, 0.34);
-    if (this.lastTo) this.addSquareTile(this.lastTo, 0xf5f682, 0.44);
-
-    if (this.selectedSquare) this.addSquareTile(this.selectedSquare, 0xf5f682, 0.50);
+    // No hazy/dimming square tiles covering the pieces or wood!
+    // The wooden board and piece textures remain 100% crisp and un-dimmed.
 
     for (const sq of this.legalMoves) {
       const pos = this.squareToPosition(sq);
@@ -726,6 +723,10 @@ export class ChessScene {
         this.dragStartPosition.copy(pieceMesh.position);
         this.dragTargetPosition.copy(pieceMesh.position);
 
+        if (this.onSelectSquareCallback) {
+          this.onSelectSquareCallback(sq);
+        }
+      } else {
         if (this.onSelectSquareCallback) {
           this.onSelectSquareCallback(sq);
         }

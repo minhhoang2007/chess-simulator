@@ -106,11 +106,11 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
           />
         </div>
 
-        {/* Animated Chibi Arya Sprite */}
+        {/* Animated Chibi Arya Sprite (enlarged by ~10%+) */}
         <div
           onClick={onClickChangeBot}
           title="Click to change bot / difficulty"
-          className={`relative w-24 h-28 sm:w-28 sm:h-32 cursor-pointer transition-transform duration-300 hover:scale-105 ${
+          className={`relative w-[110px] h-[130px] sm:w-[126px] sm:h-[148px] cursor-pointer transition-transform duration-300 hover:scale-105 ${
             state === 'victory' ? 'animate-arya-celebrate' : ''
           }`}
         >
