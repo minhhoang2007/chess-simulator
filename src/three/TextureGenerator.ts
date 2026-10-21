@@ -42,14 +42,15 @@ export class TextureGenerator {
   }
 
   /**
-   * Loads the 2048x2048 luxury honed Pietra Grey & warm gold-veined marble stone table texture.
+   * Loads the authentic photographic dark rustic wood plank table texture
+   * extracted directly from the user's reference photo.
    */
   public static createWoodTableTexture(maxAnisotropy: number = 8): THREE.Texture {
-    const texture = this.loader.load('/textures/table_photo.jpg?v=5');
+    const texture = this.loader.load('/textures/table_photo.jpg?v=7');
     texture.colorSpace = THREE.SRGBColorSpace;
-    texture.wrapS = THREE.ClampToEdgeWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
-    texture.repeat.set(1, 1);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
     texture.anisotropy = maxAnisotropy;
     return texture;
   }
@@ -149,7 +150,7 @@ export class TextureGenerator {
 
   /**
    * Generates a soft, realistic rectangular ambient occlusion shadow for the entire chessboard,
-   * with soft blurred falloff anchoring the 3D board directly onto the anime classroom desk.
+   * grounding the 3D board firmly onto the wooden tabletop.
    */
   public static createBoardShadowTexture(): THREE.CanvasTexture {
     const size = 512;
@@ -158,20 +159,22 @@ export class TextureGenerator {
     canvas.height = size;
     const ctx = canvas.getContext('2d')!;
 
-    // Soft rounded shadow rectangle with gaussian-like blur falloff
-    const pad = 64;
-    const innerSize = size - pad * 2;
-    const cx = size / 2;
-    const cy = size / 2;
+    // Dark ambient occlusion footprint
+    const bSize = 360;
+    const bx = (size - bSize) / 2;
+    const by = (size - bSize) / 2;
 
-    const grad = ctx.createRadialGradient(cx, cy, innerSize * 0.28, cx, cy, innerSize * 0.65);
-    grad.addColorStop(0, 'rgba(18, 12, 8, 0.78)');
-    grad.addColorStop(0.45, 'rgba(28, 16, 10, 0.52)');
-    grad.addColorStop(0.75, 'rgba(38, 24, 16, 0.22)');
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.92)';
+    ctx.shadowBlur = 42;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bSize, bSize, 28);
+    ctx.fill();
 
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, size, size);
+    // Additional softer outer contact penumbra
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+    ctx.shadowBlur = 75;
+    ctx.fill();
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;

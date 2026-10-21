@@ -11,7 +11,6 @@ import { GameOverModal } from './components/GameOverModal';
 import { PromotionModal } from './components/PromotionModal';
 import { MenuDrawer } from './components/MenuDrawer';
 import { AryaCompanion, AryaState } from './components/AryaCompanion';
-import { SakuraOverlay } from './components/SakuraOverlay';
 import { Menu, RotateCcw, Users, ZoomIn, ZoomOut, Trophy } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -528,19 +527,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#161512] text-[#f1f1f1] select-none font-sans">
-      {/* 0. Roshidere (Alya Sometimes Hides Her Feelings in Russian) Anime Classroom Environment */}
-      <div
-        className="absolute inset-0 bg-cover bg-[center_62%] filter brightness-[1.02] contrast-[1.02] transition-all duration-700"
-        style={{ backgroundImage: `url('/textures/alya_classroom_bg.jpg')` }}
-      >
-        {/* Soft warm anime sunlit vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/15 pointer-events-none" />
-      </div>
-
-      {/* Floating Sakura Cherry Blossom Petals */}
-      <SakuraOverlay />
-
-      {/* 3D Viewport: Fullscreen board preview (slightly smaller mode) */}
+      {/* 3D Viewport: Fullscreen board preview on authentic wood plank table */}
       <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full cursor-pointer z-10" />
 
       {/* Main Chessboard HUD: Always available */}

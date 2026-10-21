@@ -17,6 +17,7 @@ export class ChessScene {
   private boardTheme: BoardTheme = 'tournament-blue';
   private showCoordinates: boolean = true;
   private boardMesh: THREE.Mesh | null = null;
+  private tableMesh: THREE.Mesh | null = null;
   private boardShadowMesh: THREE.Mesh | null = null;
   private highlightGroup: THREE.Group = new THREE.Group();
   private hintMesh: THREE.Group | null = null;
@@ -63,9 +64,9 @@ export class ChessScene {
   constructor(container: HTMLElement) {
     this.container = container;
 
-    // 1. Scene with transparent background so the anime classroom backdrop shows through
+    // 1. Scene with clean cafe background
     this.scene = new THREE.Scene();
-    this.scene.background = null;
+    this.scene.background = new THREE.Color(0x161512);
 
     // 2. Camera (exact perspective calibration of com.jetstartgames.chess)
     const aspect = container.clientWidth / container.clientHeight;
@@ -73,10 +74,9 @@ export class ChessScene {
     this.camera.position.copy(this.PHOTO_CAMERA_POS);
     this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
 
-    // 3. Renderer with alpha enabled for transparent background
+    // 3. Renderer
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
-      alpha: true,
       powerPreference: 'high-performance'
     });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
@@ -112,17 +112,17 @@ export class ChessScene {
   }
 
   private setupLighting() {
-    const ambientLight = new THREE.AmbientLight(0xfffaec, 1.6);
+    const ambientLight = new THREE.AmbientLight(0xfff8ee, 1.55);
     this.scene.add(ambientLight);
 
-    // Warm golden afternoon keylight streaming from window (top-left)
-    const keyLight = new THREE.DirectionalLight(0xfff2dc, 1.55);
-    keyLight.position.set(-4.5, 13.5, 3.8);
+    // Warm directional keylight matching table angle and board surface
+    const keyLight = new THREE.DirectionalLight(0xfff2dc, 1.4);
+    keyLight.position.set(-3.5, 13.5, 4.8);
     this.scene.add(keyLight);
 
-    // Soft room sky fill light
-    const fillLight = new THREE.DirectionalLight(0xdceaff, 0.65);
-    fillLight.position.set(4.5, 9.0, 5.0);
+    // Soft fill light
+    const fillLight = new THREE.DirectionalLight(0xdde8f5, 0.55);
+    fillLight.position.set(4.0, 9.0, 5.5);
     this.scene.add(fillLight);
 
     try {
@@ -134,21 +134,37 @@ export class ChessScene {
   }
 
   private setupTableAndBoard() {
-    // 1. Soft ambient contact shadow anchoring the board directly to the anime classroom desk
+    const maxAniso = this.renderer.capabilities.getMaxAnisotropy();
+
+    // 1. Authentic rustic wood plank table with perspective-matching grain
+    const tableTexture = TextureGenerator.createWoodTableTexture(maxAniso);
+    const tableMat = new THREE.MeshStandardMaterial({
+      map: tableTexture,
+      roughness: 0.82,
+      metalness: 0.04
+    });
+    const tableGeo = new THREE.PlaneGeometry(32, 32);
+    this.tableMesh = new THREE.Mesh(tableGeo, tableMat);
+    this.tableMesh.rotation.x = -Math.PI / 2;
+    this.tableMesh.position.y = -0.222;
+    this.scene.add(this.tableMesh);
+
+    // 2. Soft, realistic ambient contact shadow decal directly on the wood tabletop
+    // Grounding the 3D board firmly onto the surface so tilt & resting plane match 100%
     const shadowTex = TextureGenerator.createBoardShadowTexture();
     const shadowMat = new THREE.MeshBasicMaterial({
       map: shadowTex,
       transparent: true,
-      opacity: 0.88,
+      opacity: 0.92,
       depthWrite: false
     });
-    const shadowGeo = new THREE.PlaneGeometry(10.8, 10.8);
+    const shadowGeo = new THREE.PlaneGeometry(10.5, 10.5);
     this.boardShadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
     this.boardShadowMesh.rotation.x = -Math.PI / 2;
-    this.boardShadowMesh.position.y = -0.222;
+    this.boardShadowMesh.position.y = -0.220;
     this.scene.add(this.boardShadowMesh);
 
-    // 2. Authentic 1080p 3D Chessboard
+    // 3. Authentic 1080p 3D Chessboard
     this.buildBoard();
   }
 
