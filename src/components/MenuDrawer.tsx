@@ -1,6 +1,5 @@
 import React from 'react';
 import { BotProfile, GameSettings, Language, MoveRecord, PieceTheme, BoardTheme } from '../types/chess';
-import { TRANSLATIONS } from '../locales/i18n';
 import {
   X,
   PlusCircle,
@@ -8,12 +7,7 @@ import {
   Flag,
   Volume2,
   VolumeX,
-  Compass,
-  Layers,
-  Sparkles,
-  BarChart2,
-  Eye,
-  Globe
+  Eye
 } from 'lucide-react';
 
 interface MenuDrawerProps {
@@ -34,7 +28,6 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
   bot,
   settings,
   moveHistory,
-  language,
   onClose,
   onOpenBotSelector,
   onRestartMatch,
@@ -42,9 +35,7 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
   onUpdateSettings
 }) => {
   if (!isOpen) return null;
-  const t = TRANSLATIONS[language];
 
-  // Pair moves for table
   const pairedMoves: { num: number; white?: MoveRecord; black?: MoveRecord }[] = [];
   for (let i = 0; i < moveHistory.length; i += 2) {
     pairedMoves.push({
@@ -55,44 +46,39 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div className="fixed inset-0 z-50 flex font-sans">
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-black/55 backdrop-blur-xs transition-opacity"
       />
 
-      {/* Drawer Panel */}
-      <div className="relative w-80 max-w-[85vw] h-full bg-[#1b1511] text-[#ede8e1] border-r border-[#3a2c22] shadow-2xl flex flex-col z-10 animate-slideRight">
+      {/* Chess.com Dark Slate Drawer */}
+      <div className="relative w-76 max-w-[85vw] h-full bg-[#262421] text-[#f1f1f1] border-r border-white/10 shadow-2xl flex flex-col z-10 animate-slideRight">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#30241b] bg-[#140f0c]">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">♚</span>
-            <span className="font-bold text-sm tracking-wide text-[#f5ebd9] uppercase">
-              {t.menu}
-            </span>
-          </div>
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/8 bg-[#1f1e1b]">
+          <span className="font-bold text-sm tracking-tight text-white">
+            Game Menu
+          </span>
           <button
             onClick={onClose}
-            className="p-1 rounded text-[#9e8f83] hover:text-white hover:bg-[#2b2019] transition-colors"
+            className="p-1 rounded-lg text-[#9e9b95] hover:text-white hover:bg-white/8 transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Current Opponent */}
-        <div className="px-4 py-3 border-b border-[#30241b] bg-[#1e1713] flex items-center justify-between">
+        {/* Current Opponent Card */}
+        <div className="px-4 py-3 border-b border-white/8 bg-[#21201d] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="text-2xl">{bot.avatar}</span>
+            <img src={bot.avatar} alt={bot.name} className="w-9 h-9 object-contain" />
             <div>
               <div className="text-xs font-bold text-white flex items-center gap-1.5">
                 <span>{bot.name}</span>
-                <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-[#3d2c1e] text-[#f59e0b] border border-[#523b28]">
-                  {bot.elo} ELO
-                </span>
+                <span className="text-[11px] font-bold text-[#81b64c]">({bot.elo})</span>
               </div>
-              <div className="text-[10px] text-[#9e8f83]">
-                {bot.personalityTag} • {bot.category}
+              <div className="text-[11px] text-[#9e9b95]">
+                {bot.personalityTag}
               </div>
             </div>
           </div>
@@ -101,13 +87,13 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
               onClose();
               onOpenBotSelector();
             }}
-            className="text-[11px] font-semibold text-[#f59e0b] hover:underline"
+            className="px-2.5 py-1 rounded-md bg-[#312e2b] hover:bg-[#3d3935] text-xs font-semibold text-white transition-colors cursor-pointer"
           >
-            {language === 'vi' ? 'Đổi Bot' : 'Change'}
+            Change Bot
           </button>
         </div>
 
-        {/* Scrollable content */}
+        {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Quick Actions */}
           <div className="grid grid-cols-2 gap-2">
@@ -116,20 +102,20 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
                 onClose();
                 onOpenBotSelector();
               }}
-              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-[#2b2018] hover:bg-[#382b20] border border-[#443326] text-xs font-semibold text-[#ede8e1] transition-colors"
+              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-[#81b64c] hover:bg-[#91c859] text-xs font-bold text-white transition-colors cursor-pointer"
             >
-              <PlusCircle className="w-3.5 h-3.5 text-[#f59e0b]" />
-              <span>{t.newGame}</span>
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>New Game</span>
             </button>
             <button
               onClick={() => {
                 onClose();
                 onRestartMatch();
               }}
-              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-[#2b2018] hover:bg-[#382b20] border border-[#443326] text-xs font-semibold text-[#ede8e1] transition-colors"
+              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-[#312e2b] hover:bg-[#3b3834] text-xs font-semibold text-white transition-colors cursor-pointer"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-[#f59e0b]" />
-              <span>{t.restartMatch}</span>
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Rematch</span>
             </button>
           </div>
 
@@ -138,60 +124,31 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
               onClose();
               onResign();
             }}
-            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-[#2b1818] hover:bg-[#381e1e] border border-[#542828] text-xs font-semibold text-[#f87171] transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-[#312e2b] hover:bg-[#3f2626] text-xs font-semibold text-[#ef5350] transition-colors cursor-pointer"
           >
             <Flag className="w-3.5 h-3.5" />
-            <span>{t.resign}</span>
+            <span>Resign</span>
           </button>
 
-          {/* Piece Themes */}
-          <div className="pt-2 border-t border-[#30241b]">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9e8f83] mb-2 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#f59e0b]" />
-              <span>{t.pieceTheme}</span>
+          {/* Piece Style */}
+          <div className="pt-3 border-t border-white/8">
+            <label className="block text-xs font-semibold text-[#9e9b95] mb-2">
+              Pieces
             </label>
-            <div className="grid grid-cols-2 gap-1.5 text-xs">
+            <div className="grid grid-cols-2 gap-1.5">
               {[
-                { id: 'classic-wood', label: t.classicWood, icon: '🪵' },
-                { id: 'liquid-glass', label: t.liquidGlass, icon: '💎' },
-                { id: 'emerald-jade', label: t.emeraldJade, icon: '🟢' },
-                { id: 'cyber-neon', label: t.cyberNeon, icon: '⚡' }
+                { id: 'classic-wood', label: 'Classic Wood' },
+                { id: 'liquid-glass', label: 'Liquid Glass' },
+                { id: 'emerald-jade', label: 'Emerald Jade' },
+                { id: 'cyber-neon', label: 'Neon Glass' }
               ].map((th) => (
                 <button
                   key={th.id}
                   onClick={() => onUpdateSettings({ pieceTheme: th.id as PieceTheme })}
-                  className={`py-1.5 px-2 rounded-lg border text-left flex items-center gap-1.5 transition-all ${
+                  className={`py-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
                     settings.pieceTheme === th.id
-                      ? 'bg-[#3d2c1e] text-[#f59e0b] border-[#d97706]'
-                      : 'bg-[#18130f] text-[#c7b8a7] border-[#33251a] hover:bg-[#241b14]'
-                  }`}
-                >
-                  <span className="text-sm">{th.icon}</span>
-                  <span className="text-[11px] font-medium truncate">{th.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Board Themes */}
-          <div className="pt-2 border-t border-[#30241b]">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9e8f83] mb-2 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-[#f59e0b]" />
-              <span>{t.boardTheme}</span>
-            </label>
-            <div className="grid grid-cols-3 gap-1.5 text-xs">
-              {[
-                { id: 'rustic-wood', label: t.rusticWood },
-                { id: 'obsidian-marble', label: t.obsidianMarble },
-                { id: 'tournament-blue', label: t.tournamentBlue }
-              ].map((th) => (
-                <button
-                  key={th.id}
-                  onClick={() => onUpdateSettings({ boardTheme: th.id as BoardTheme })}
-                  className={`py-1.5 px-1.5 rounded-lg border text-center text-[10px] font-medium truncate transition-all ${
-                    settings.boardTheme === th.id
-                      ? 'bg-[#3d2c1e] text-[#f59e0b] border-[#d97706]'
-                      : 'bg-[#18130f] text-[#c7b8a7] border-[#33251a] hover:bg-[#241b14]'
+                      ? 'bg-[#363330] text-white border-[#81b64c]'
+                      : 'bg-[#1f1e1b] text-[#9e9b95] border-white/8 hover:text-white'
                   }`}
                 >
                   {th.label}
@@ -200,129 +157,87 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
             </div>
           </div>
 
-          {/* Camera View Mode */}
-          <div className="pt-2 border-t border-[#30241b]">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9e8f83] mb-2 flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5 text-[#f59e0b]" />
-              <span>{t.cameraTilt}</span>
+          {/* Board Theme */}
+          <div className="pt-3 border-t border-white/8">
+            <label className="block text-xs font-semibold text-[#9e9b95] mb-2">
+              Board
             </label>
-            <div className="grid grid-cols-2 gap-1.5 text-xs">
-              <button
-                onClick={() => onUpdateSettings({ cameraTilt: 'photo' })}
-                className={`py-1.5 px-2 rounded-lg border text-xs font-medium transition-all ${
-                  settings.cameraTilt === 'photo'
-                    ? 'bg-[#3d2c1e] text-[#f59e0b] border-[#d97706]'
-                    : 'bg-[#18130f] text-[#c7b8a7] border-[#33251a] hover:bg-[#241b14]'
-                }`}
-              >
-                {t.viewPhoto}
-              </button>
-              <button
-                onClick={() => onUpdateSettings({ cameraTilt: 'topdown' })}
-                className={`py-1.5 px-2 rounded-lg border text-xs font-medium transition-all ${
-                  settings.cameraTilt === 'topdown'
-                    ? 'bg-[#3d2c1e] text-[#f59e0b] border-[#d97706]'
-                    : 'bg-[#18130f] text-[#c7b8a7] border-[#33251a] hover:bg-[#241b14]'
-                }`}
-              >
-                {t.viewTopdown}
-              </button>
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { id: 'rustic-wood', label: 'Wood' },
+                { id: 'obsidian-marble', label: 'Slate' },
+                { id: 'tournament-blue', label: 'Blue' }
+              ].map((th) => (
+                <button
+                  key={th.id}
+                  onClick={() => onUpdateSettings({ boardTheme: th.id as BoardTheme })}
+                  className={`py-1.5 px-2 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                    settings.boardTheme === th.id
+                      ? 'bg-[#363330] text-white border-[#81b64c]'
+                      : 'bg-[#1f1e1b] text-[#9e9b95] border-white/8 hover:text-white'
+                  }`}
+                >
+                  {th.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Toggles: Sound, Coords, Eval */}
-          <div className="pt-2 border-t border-[#30241b] space-y-2">
-            <div className="flex items-center justify-between text-xs py-1">
-              <span className="flex items-center gap-2 text-[#c7b8a7]">
-                {settings.soundEnabled ? <Volume2 className="w-4 h-4 text-[#f59e0b]" /> : <VolumeX className="w-4 h-4 text-[#6e5d51]" />}
-                <span>{t.sound}</span>
+          {/* Sound & Coordinates */}
+          <div className="pt-3 border-t border-white/8 space-y-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-2 text-[#c8c5c0]">
+                {settings.soundEnabled ? (
+                  <Volume2 className="w-4 h-4 text-[#81b64c]" />
+                ) : (
+                  <VolumeX className="w-4 h-4 text-[#7a7772]" />
+                )}
+                <span>Move Sounds</span>
               </span>
               <input
                 type="checkbox"
                 checked={settings.soundEnabled}
                 onChange={(e) => onUpdateSettings({ soundEnabled: e.target.checked })}
-                className="accent-amber-500 cursor-pointer"
+                className="accent-[#81b64c] cursor-pointer"
               />
             </div>
 
-            <div className="flex items-center justify-between text-xs py-1">
-              <span className="flex items-center gap-2 text-[#c7b8a7]">
-                <Eye className="w-4 h-4 text-[#f59e0b]" />
-                <span>{t.coordinates}</span>
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-2 text-[#c8c5c0]">
+                <Eye className="w-4 h-4 text-[#81b64c]" />
+                <span>Board Coordinates</span>
               </span>
               <input
                 type="checkbox"
                 checked={settings.showCoordinates}
                 onChange={(e) => onUpdateSettings({ showCoordinates: e.target.checked })}
-                className="accent-amber-500 cursor-pointer"
+                className="accent-[#81b64c] cursor-pointer"
               />
-            </div>
-
-            <div className="flex items-center justify-between text-xs py-1">
-              <span className="flex items-center gap-2 text-[#c7b8a7]">
-                <BarChart2 className="w-4 h-4 text-[#f59e0b]" />
-                <span>{t.showEval}</span>
-              </span>
-              <input
-                type="checkbox"
-                checked={settings.showEvaluationBar}
-                onChange={(e) => onUpdateSettings({ showEvaluationBar: e.target.checked })}
-                className="accent-amber-500 cursor-pointer"
-              />
-            </div>
-
-            {/* Language Switch */}
-            <div className="flex items-center justify-between text-xs py-1.5 border-t border-[#2a1e16] mt-2">
-              <span className="flex items-center gap-2 text-[#c7b8a7]">
-                <Globe className="w-4 h-4 text-[#f59e0b]" />
-                <span>Ngôn ngữ / Language</span>
-              </span>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => onUpdateSettings({ language: 'vi' })}
-                  className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                    settings.language === 'vi' ? 'bg-[#d97706] text-black' : 'text-[#8c7b6e] hover:text-white'
-                  }`}
-                >
-                  VI
-                </button>
-                <button
-                  onClick={() => onUpdateSettings({ language: 'en' })}
-                  className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                    settings.language === 'en' ? 'bg-[#d97706] text-black' : 'text-[#8c7b6e] hover:text-white'
-                  }`}
-                >
-                  EN
-                </button>
-              </div>
             </div>
           </div>
 
-          {/* Move History Table */}
-          <div className="pt-2 border-t border-[#30241b]">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#9e8f83] mb-1.5">
-              {t.history} ({moveHistory.length})
+          {/* Move History (Chess.com notation list) */}
+          <div className="pt-3 border-t border-white/8">
+            <label className="block text-xs font-semibold text-[#9e9b95] mb-1.5">
+              Moves ({moveHistory.length})
             </label>
-            <div className="max-h-36 overflow-y-auto bg-[#140f0c] p-2 rounded-lg border border-[#2e2117] font-mono text-[11px]">
+            <div className="max-h-40 overflow-y-auto bg-[#1f1e1b] p-2 rounded-lg border border-white/8 text-xs font-medium">
               {pairedMoves.length === 0 ? (
-                <div className="text-[#665447] text-center py-2">--</div>
+                <div className="text-[#6e6b65] text-center py-2">No moves yet</div>
               ) : (
                 pairedMoves.map(({ num, white, black }) => (
-                  <div key={num} className="grid grid-cols-12 py-0.5 px-1 hover:bg-[#211812] rounded">
-                    <span className="col-span-3 text-[#6e5d51]">{num}.</span>
-                    <span className="col-span-4 text-[#ede8e1] font-semibold">{white?.san}</span>
-                    <span className="col-span-5 text-[#a89a8e]">{black?.san || ''}</span>
+                  <div
+                    key={num}
+                    className="grid grid-cols-12 py-1 px-2 odd:bg-white/[0.02] rounded"
+                  >
+                    <span className="col-span-3 text-[#7a7772]">{num}.</span>
+                    <span className="col-span-4 text-white font-semibold">{white?.san}</span>
+                    <span className="col-span-5 text-[#c8c5c0]">{black?.san || ''}</span>
                   </div>
                 ))
               )}
             </div>
           </div>
-        </div>
-
-        {/* Footer with GitHub info */}
-        <div className="px-4 py-2.5 border-t border-[#30241b] bg-[#140f0c] text-[10px] text-[#806f62] flex items-center justify-between">
-          <span>github: minhhoang2007</span>
-          <span>Stockfish Engine</span>
         </div>
       </div>
     </div>

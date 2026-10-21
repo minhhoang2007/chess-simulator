@@ -130,19 +130,25 @@ class StockfishEngineService {
 
   public getBestMove(game: Chess, bot: BotProfile, onDone: (result: BestMoveResult) => void) {
     this.configureBot(bot);
+    const startTime = performance.now();
+
+    const deliverWithHumanTempo = (res: BestMoveResult) => {
+      const elapsed = performance.now() - startTime;
+      const targetMinDelay = 190 + Math.random() * 70; // ~190-260ms fast human click tempo
+      const remaining = Math.max(20, targetMinDelay - elapsed);
+      window.setTimeout(() => onDone(res), remaining);
+    };
 
     // Nelson Personality: loves early Queen moves!
     if (bot.id === 'nelson' && game.history().length < 6) {
       const legalMoves = game.moves({ verbose: true });
       const queenMove = legalMoves.find((m) => m.piece === 'q');
       if (queenMove && Math.random() < 0.65) {
-        setTimeout(() => {
-          onDone({
-            from: queenMove.from,
-            to: queenMove.to,
-            promotion: queenMove.promotion as 'q' | 'r' | 'b' | 'n' | undefined
-          });
-        }, 500);
+        deliverWithHumanTempo({
+          from: queenMove.from,
+          to: queenMove.to,
+          promotion: queenMove.promotion as 'q' | 'r' | 'b' | 'n' | undefined
+        });
         return;
       }
     }
@@ -153,37 +159,34 @@ class StockfishEngineService {
       if (legalMoves.length > 0) {
         const randomIndex = Math.floor(Math.random() * legalMoves.length);
         const randomMove = legalMoves[randomIndex];
-        setTimeout(() => {
-          onDone({
-            from: randomMove.from,
-            to: randomMove.to,
-            promotion: randomMove.promotion as 'q' | 'r' | 'b' | 'n' | undefined
-          });
-        }, 400 + Math.random() * 400);
+        deliverWithHumanTempo({
+          from: randomMove.from,
+          to: randomMove.to,
+          promotion: randomMove.promotion as 'q' | 'r' | 'b' | 'n' | undefined
+        });
         return;
       }
     }
 
     if (this.worker && this.isReady) {
-      this.onMoveCallback = onDone;
+      this.onMoveCallback = (res) => deliverWithHumanTempo(res);
       this.sendCommand('stop');
       this.sendCommand(`position fen ${game.fen()}`);
 
-      const movetime = Math.min(1400, Math.max(300, bot.skillLevel * 70));
-      this.sendCommand(`go depth ${bot.depth} movetime ${movetime}`);
+      const movetime = Math.min(210, Math.max(100, bot.skillLevel * 10));
+      const depth = Math.min(12, bot.depth);
+      this.sendCommand(`go depth ${depth} movetime ${movetime}`);
 
       this.searchTimeout = window.setTimeout(() => {
         if (this.onMoveCallback) {
           this.onMoveCallback = null;
           const fallback = this.calculateLocalMove(game, bot);
-          onDone(fallback);
+          deliverWithHumanTempo(fallback);
         }
-      }, 4000);
+      }, 650);
     } else {
-      setTimeout(() => {
-        const move = this.calculateLocalMove(game, bot);
-        onDone(move);
-      }, 350 + Math.random() * 350);
+      const move = this.calculateLocalMove(game, bot);
+      deliverWithHumanTempo(move);
     }
   }
 

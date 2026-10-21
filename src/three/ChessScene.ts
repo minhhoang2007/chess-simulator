@@ -20,7 +20,6 @@ export class ChessScene {
   private tableMesh: THREE.Mesh | null = null;
   private highlightGroup: THREE.Group = new THREE.Group();
   private hintMesh: THREE.Group | null = null;
-  private checkMesh: THREE.Mesh | null = null;
   private contactShadowTex: THREE.Texture;
   private spritePlaneGeo: THREE.PlaneGeometry;
 
@@ -35,13 +34,23 @@ export class ChessScene {
   private draggedMesh: THREE.Mesh | null = null;
   private dragStartSquare: Square | null = null;
   private dragStartPosition = new THREE.Vector3();
+  private dragTargetPosition = new THREE.Vector3();
   private isPointerDown = false;
   private pointerDownCoord = { x: 0, y: 0 };
   private isDragging = false;
 
+  // Smooth Touchpad / Pinch Zoom State
+  private zoomScale = 1.0;
+  private targetZoomScale = 1.0;
+  private readonly MIN_ZOOM = 0.68;
+  private readonly MAX_ZOOM = 1.55;
+  private pinchStartDist: number | null = null;
+  private pinchStartZoom = 1.0;
+
   // Callbacks
   private onMoveCallback: ((from: Square, to: Square) => void) | null = null;
   private onSelectSquareCallback: ((square: Square) => void) | null = null;
+  private onCameraChangeCallback: (() => void) | null = null;
 
   // Orientation
   private isFlipped = false;
@@ -345,8 +354,6 @@ export class ChessScene {
         this.piecesMap.delete(sq);
       }
     }
-
-    this.updateCheckIndicator(game);
   }
 
   private createPieceMesh(square: Square, type: PieceSymbol, color: Color): THREE.Mesh {
@@ -380,7 +387,7 @@ export class ChessScene {
     return mesh;
   }
 
-  // --- ANIMATED PIECE MOVE ---
+  // --- ANIMATED PIECE MOVE (Silky 60-120fps quintic glide) ---
   public animateMove(from: Square, to: Square, onFinish?: () => void) {
     const mesh = this.piecesMap.get(from);
     if (!mesh) {
@@ -389,7 +396,7 @@ export class ChessScene {
     }
 
     const targetPiece = this.piecesMap.get(to);
-    if (targetPiece) {
+    if (targetPiece && targetPiece !== mesh) {
       this.scene.remove(targetPiece);
       this.piecesMap.delete(to);
     }
@@ -400,18 +407,23 @@ export class ChessScene {
 
     const startPos = mesh.position.clone();
     const endPos = this.squareToPosition(to);
+    const dist = startPos.distanceTo(endPos);
     const startTime = performance.now();
-    const duration = 220;
+    // Adaptive duration: shorter for 1-square moves or drag-drop snaps, slightly longer for long slides
+    const duration = dist < 0.6 ? 120 : Math.min(290, Math.max(210, 185 + dist * 16));
+    const arcHeight = dist < 0.6 ? 0.02 : Math.min(0.14, 0.06 + dist * 0.012);
     const tempPos = new THREE.Vector3();
 
     const animStep = () => {
       const elapsed = performance.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      const ease = progress * progress * (3 - 2 * progress);
+      // Quintic ease-out for ultra-smooth deceleration as the piece settles on the square
+      const inv = 1 - progress;
+      const ease = 1 - inv * inv * inv * inv;
 
       tempPos.x = THREE.MathUtils.lerp(startPos.x, endPos.x, ease);
       tempPos.z = THREE.MathUtils.lerp(startPos.z, endPos.z, ease);
-      tempPos.y = startPos.y + Math.sin(progress * Math.PI) * 0.25;
+      tempPos.y = THREE.MathUtils.lerp(startPos.y, endPos.y, ease) + Math.sin(progress * Math.PI) * arcHeight;
       this.setPiecePosition(mesh, tempPos);
 
       if (progress < 1) {
@@ -421,7 +433,7 @@ export class ChessScene {
         if (onFinish) onFinish();
       }
     };
-    animStep();
+    requestAnimationFrame(animStep);
   }
 
   // --- HIGHLIGHTS ---
@@ -448,21 +460,22 @@ export class ChessScene {
       }
     }
 
-    if (this.lastFrom) this.addSquareTile(this.lastFrom, 0xf59e0b, 0.28);
-    if (this.lastTo) this.addSquareTile(this.lastTo, 0xf59e0b, 0.36);
+    // Chess.com warm sunlit highlight for last move & selected square
+    if (this.lastFrom) this.addSquareTile(this.lastFrom, 0xf5f682, 0.34);
+    if (this.lastTo) this.addSquareTile(this.lastTo, 0xf5f682, 0.44);
 
-    if (this.selectedSquare) this.addSquareTile(this.selectedSquare, 0x10b981, 0.42);
+    if (this.selectedSquare) this.addSquareTile(this.selectedSquare, 0xf5f682, 0.50);
 
     for (const sq of this.legalMoves) {
       const pos = this.squareToPosition(sq);
       const isCapture = this.piecesMap.has(sq);
 
       if (isCapture) {
-        const ringGeo = new THREE.RingGeometry(0.30, 0.44, 32);
+        const ringGeo = new THREE.RingGeometry(0.35, 0.46, 36);
         const ringMat = new THREE.MeshBasicMaterial({
-          color: 0xef4444,
+          color: 0x000000,
           transparent: true,
-          opacity: 0.78,
+          opacity: 0.24,
           side: THREE.DoubleSide,
           depthWrite: false
         });
@@ -472,11 +485,11 @@ export class ChessScene {
         ring.renderOrder = 12;
         this.highlightGroup.add(ring);
       } else {
-        const dotGeo = new THREE.CircleGeometry(0.14, 24);
+        const dotGeo = new THREE.CircleGeometry(0.145, 28);
         const dotMat = new THREE.MeshBasicMaterial({
-          color: 0x10b981,
+          color: 0x000000,
           transparent: true,
-          opacity: 0.75,
+          opacity: 0.22,
           side: THREE.DoubleSide,
           depthWrite: false
         });
@@ -491,7 +504,7 @@ export class ChessScene {
 
   private addSquareTile(sq: Square, color: number, opacity: number) {
     const pos = this.squareToPosition(sq);
-    const planeGeo = new THREE.PlaneGeometry(0.96, 0.96);
+    const planeGeo = new THREE.PlaneGeometry(0.98, 0.98);
     const planeMat = new THREE.MeshBasicMaterial({
       color,
       transparent: true,
@@ -506,36 +519,22 @@ export class ChessScene {
     this.highlightGroup.add(mesh);
   }
 
-  // --- CHECK INDICATOR ---
-  private updateCheckIndicator(game: Chess) {
-    if (this.checkMesh) {
-      this.scene.remove(this.checkMesh);
-      this.checkMesh.geometry.dispose();
-      this.checkMesh = null;
-    }
+  /**
+   * Projects the top-right corner of the King on `square` into 2D screen coordinates (px)
+   * for the Chess.com-style Checkmate badge & popup.
+   */
+  public getKingTopRightScreenPosition(square: Square): { x: number; y: number } | null {
+    if (!this.container) return null;
+    const pos = this.squareToPosition(square);
+    // Top-right corner above the King's crown in world space
+    const worldPt = new THREE.Vector3(pos.x + 0.36, pos.y + 0.68, pos.z - 0.36);
+    worldPt.project(this.camera);
 
-    if (game.inCheck()) {
-      const turn = game.turn();
-      for (const [sq, mesh] of this.piecesMap.entries()) {
-        if (mesh.userData.type === 'k' && mesh.userData.color === turn) {
-          const pos = this.squareToPosition(sq);
-          const ringGeo = new THREE.RingGeometry(0.20, 0.46, 32);
-          const ringMat = new THREE.MeshBasicMaterial({
-            color: 0xdc2626,
-            transparent: true,
-            opacity: 0.85,
-            side: THREE.DoubleSide,
-            depthWrite: false
-          });
-          this.checkMesh = new THREE.Mesh(ringGeo, ringMat);
-          this.checkMesh.rotation.x = -Math.PI / 2;
-          this.checkMesh.position.set(pos.x, 0.225, pos.z);
-          this.checkMesh.renderOrder = 15;
-          this.scene.add(this.checkMesh);
-          break;
-        }
-      }
-    }
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    const x = (worldPt.x * 0.5 + 0.5) * width;
+    const y = (-worldPt.y * 0.5 + 0.5) * height;
+    return { x, y };
   }
 
   // --- HINT ARROW ---
@@ -551,9 +550,9 @@ export class ChessScene {
     const group = new THREE.Group();
     const shaftGeo = new THREE.CylinderGeometry(0.05, 0.05, len - 0.35, 16);
     const mat = new THREE.MeshBasicMaterial({
-      color: 0xf59e0b,
+      color: 0x81b64c,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.88,
       depthTest: false
     });
     const shaft = new THREE.Mesh(shaftGeo, mat);
@@ -615,9 +614,10 @@ export class ChessScene {
       this.setPiecePosition(mesh, this.squareToPosition(sq));
     }
     this.refreshHighlights();
+    if (this.onCameraChangeCallback) this.onCameraChangeCallback();
   }
 
-  // --- CAMERA MODES ---
+  // --- CAMERA MODES & ZOOM ---
   public setCameraMode(mode: 'photo' | 'topdown' | 'free3d') {
     if (mode === 'topdown') {
       this.camera.position.set(0, 19.5, 0.01);
@@ -629,12 +629,80 @@ export class ChessScene {
     for (const [sq, mesh] of this.piecesMap.entries()) {
       this.setPiecePosition(mesh, this.squareToPosition(sq));
     }
+    if (this.onCameraChangeCallback) this.onCameraChangeCallback();
   }
 
-  // --- ACCURATE INTERACTION & DRAG-AND-DROP ---
+  public adjustZoom(deltaScale: number) {
+    this.targetZoomScale = THREE.MathUtils.clamp(
+      this.targetZoomScale + deltaScale,
+      this.MIN_ZOOM,
+      this.MAX_ZOOM
+    );
+  }
+
+  public resetZoom() {
+    this.targetZoomScale = 1.0;
+  }
+
+  // --- ACCURATE INTERACTION, SMOOTH DRAG & TOUCHPAD PINCH ZOOM ---
   private setupInteractivity() {
     const dom = this.renderer.domElement;
 
+    // 1. Touchpad Two-Finger Pinch & Two-Finger Scroll Zoom
+    dom.addEventListener(
+      'wheel',
+      (e: WheelEvent) => {
+        e.preventDefault();
+        // macOS trackpad pinch sets e.ctrlKey = true with smaller deltaY; two-finger scroll has larger deltaY
+        const sensitivity = e.ctrlKey ? 0.0085 : 0.0018;
+        const delta = -e.deltaY * sensitivity;
+        this.targetZoomScale = THREE.MathUtils.clamp(
+          this.targetZoomScale + delta,
+          this.MIN_ZOOM,
+          this.MAX_ZOOM
+        );
+      },
+      { passive: false }
+    );
+
+    // 2. Touch Pinch-to-Zoom for multi-touch devices
+    dom.addEventListener(
+      'touchstart',
+      (e: TouchEvent) => {
+        if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          this.pinchStartDist = Math.hypot(dx, dy);
+          this.pinchStartZoom = this.targetZoomScale;
+        }
+      },
+      { passive: true }
+    );
+
+    dom.addEventListener(
+      'touchmove',
+      (e: TouchEvent) => {
+        if (e.touches.length === 2 && this.pinchStartDist && this.pinchStartDist > 10) {
+          e.preventDefault();
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.hypot(dx, dy);
+          const ratio = dist / this.pinchStartDist;
+          this.targetZoomScale = THREE.MathUtils.clamp(
+            this.pinchStartZoom * ratio,
+            this.MIN_ZOOM,
+            this.MAX_ZOOM
+          );
+        }
+      },
+      { passive: false }
+    );
+
+    dom.addEventListener('touchend', () => {
+      this.pinchStartDist = null;
+    });
+
+    // 3. Pointer Down / Drag / Click-to-Move
     dom.addEventListener('pointerdown', (e) => {
       this.isPointerDown = true;
       this.isDragging = false;
@@ -656,6 +724,7 @@ export class ChessScene {
         this.dragStartSquare = sq;
         this.draggedMesh = pieceMesh;
         this.dragStartPosition.copy(pieceMesh.position);
+        this.dragTargetPosition.copy(pieceMesh.position);
 
         if (this.onSelectSquareCallback) {
           this.onSelectSquareCallback(sq);
@@ -669,17 +738,14 @@ export class ChessScene {
       const dx = Math.abs(e.clientX - this.pointerDownCoord.x);
       const dy = Math.abs(e.clientY - this.pointerDownCoord.y);
 
-      if (dx > 4 || dy > 4) {
+      if (dx > 3 || dy > 3) {
         this.isDragging = true;
       }
 
       if (this.isDragging && this.draggedMesh) {
         const boardIntersect = this.getBoardIntersect(e);
         if (boardIntersect) {
-          this.setPiecePosition(
-            this.draggedMesh,
-            new THREE.Vector3(boardIntersect.x, 0.45, boardIntersect.z)
-          );
+          this.dragTargetPosition.set(boardIntersect.x, 0.32, boardIntersect.z);
         }
       }
     });
@@ -737,10 +803,12 @@ export class ChessScene {
 
   public setCallbacks(
     onSelect: (square: Square) => void,
-    onMove: (from: Square, to: Square) => void
+    onMove: (from: Square, to: Square) => void,
+    onCameraChange?: () => void
   ) {
     this.onSelectSquareCallback = onSelect;
     this.onMoveCallback = onMove;
+    this.onCameraChangeCallback = onCameraChange || null;
   }
 
   private onResize() {
@@ -750,14 +818,29 @@ export class ChessScene {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+    if (this.onCameraChangeCallback) this.onCameraChangeCallback();
   }
 
   private animate() {
     this.animationFrameId = requestAnimationFrame(this.animate);
 
-    if (this.checkMesh) {
-      const pulse = 0.65 + Math.sin(performance.now() * 0.008) * 0.25;
-      (this.checkMesh.material as THREE.MeshBasicMaterial).opacity = pulse;
+    // Smoothly damp touchpad zoom
+    if (Math.abs(this.targetZoomScale - this.zoomScale) > 0.0005) {
+      this.zoomScale += (this.targetZoomScale - this.zoomScale) * 0.22;
+      this.camera.fov = this.PHOTO_CAMERA_FOV / this.zoomScale;
+      this.camera.updateProjectionMatrix();
+      if (this.onCameraChangeCallback) this.onCameraChangeCallback();
+    }
+
+    // Smoothly interpolate dragged piece toward cursor for zero-jitter dragging
+    if (this.isDragging && this.draggedMesh) {
+      const cur = this.draggedMesh.position;
+      const nextPos = new THREE.Vector3(
+        THREE.MathUtils.lerp(cur.x, this.dragTargetPosition.x, 0.48),
+        THREE.MathUtils.lerp(cur.y, this.dragTargetPosition.y, 0.48),
+        THREE.MathUtils.lerp(cur.z, this.dragTargetPosition.z, 0.48)
+      );
+      this.setPiecePosition(this.draggedMesh, nextPos);
     }
 
     this.renderer.render(this.scene, this.camera);

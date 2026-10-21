@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Chess, Square, PieceSymbol, Color } from 'chess.js';
+import confetti from 'canvas-confetti';
 import { BotProfile, CapturedPieces, GameSettings, MoveRecord, TimeControl } from './types/chess';
 import { CHESS_COM_BOTS, TRANSLATIONS } from './locales/i18n';
 import { ChessScene } from './three/ChessScene';
@@ -7,39 +8,39 @@ import { stockfishEngine } from './engine/stockfishEngine';
 import { sounds } from './audio/soundEffects';
 import { BotSelectorModal } from './components/BotSelectorModal';
 import { PromotionModal } from './components/PromotionModal';
-import { GameOverModal } from './components/GameOverModal';
 import { MenuDrawer } from './components/MenuDrawer';
-import {
-  Menu,
-  RotateCcw,
-  Sparkles
-} from 'lucide-react';
+import { AryaCompanion, AryaState } from './components/AryaCompanion';
+import { Menu, RotateCcw, Users, ZoomIn, ZoomOut } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Core Chess State
   const [chess] = useState<Chess>(() => new Chess());
   const [turn, setTurn] = useState<Color>('w');
-  const [inCheck, setInCheck] = useState<boolean>(false);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [winner, setWinner] = useState<Color | 'draw' | null>(null);
   const [gameOverReason, setGameOverReason] = useState<string>('');
   const [isBotThinking, setIsBotThinking] = useState<boolean>(false);
   const [hintInfo, setHintInfo] = useState<{ from: Square; to: Square } | null>(null);
 
-  // Settings: 100% matched to reference photo
+  // Checkmated King Square & 2D Screen Position for Chess.com Checkmate Popup
+  const [matedKingSquare, setMatedKingSquare] = useState<Square | null>(null);
+  const [matedKingScreenPos, setMatedKingScreenPos] = useState<{ x: number; y: number } | null>(null);
+  const matedKingSquareRef = useRef<Square | null>(null);
+
+  // Settings: English + Chill Cafe 3D Wood Board
   const [settings, setSettings] = useState<GameSettings>({
-    language: 'vi',
-    pieceTheme: 'classic-wood', // photo style: polished ivory & ebony wood
-    boardTheme: 'rustic-wood',  // photo style: authentic maple & walnut on rustic table
+    language: 'en',
+    pieceTheme: 'classic-wood',
+    boardTheme: 'rustic-wood',
     soundEnabled: true,
     showCoordinates: true,
     showLegalMoves: true,
-    showEvaluationBar: false,   // COMPLETELY REMOVED from screen as requested
+    showEvaluationBar: false,
     cameraTilt: 'photo'
   });
 
-  // Current Bot: Defaults to beginner/Nelson
-  const [selectedBot, setSelectedBot] = useState<BotProfile>(CHESS_COM_BOTS[0]); // Jimmy (Beginner)
+  // Current Bot: Defaults to Arya (1500) or Jimmy (600); Bot Selector opens immediately on launch
+  const [selectedBot, setSelectedBot] = useState<BotProfile>(CHESS_COM_BOTS[0]);
   const [playerColor, setPlayerColor] = useState<Color>('w');
   const [timeControl, setTimeControl] = useState<TimeControl>('unlimited');
   const [whiteTime, setWhiteTime] = useState<number>(300);
@@ -47,13 +48,12 @@ export const App: React.FC = () => {
 
   // Move History
   const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
-  const [capturedPieces, setCapturedPieces] = useState<CapturedPieces>({ w: [], b: [] });
+  const [, setCapturedPieces] = useState<CapturedPieces>({ w: [], b: [] });
 
-  // Drawers & Modals
+  // Drawers & Modals — Open BotSelectorModal immediately on page load!
   const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState<boolean>(false);
-  const [isBotModalOpen, setIsBotModalOpen] = useState<boolean>(false);
+  const [isBotModalOpen, setIsBotModalOpen] = useState<boolean>(true);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
-  const [isGameOverModalOpen, setIsGameOverModalOpen] = useState<boolean>(false);
   const [isResignConfirmOpen, setIsResignConfirmOpen] = useState<boolean>(false);
 
   // 3D Scene Refs
@@ -62,7 +62,17 @@ export const App: React.FC = () => {
   const selectedSquareRef = useRef<Square | null>(null);
   const [isFlipped, setIsFlipped] = useState<boolean>(false);
 
-  const t = TRANSLATIONS[settings.language];
+  const t = TRANSLATIONS.en;
+
+  const updateMatedKingScreenCoords = useCallback(() => {
+    const sq = matedKingSquareRef.current;
+    if (!sq || !sceneRef.current) {
+      setMatedKingScreenPos(null);
+      return;
+    }
+    const coords = sceneRef.current.getKingTopRightScreenPosition(sq);
+    setMatedKingScreenPos(coords);
+  }, []);
 
   // 1. Initialize 3D Scene
   useEffect(() => {
@@ -77,7 +87,8 @@ export const App: React.FC = () => {
 
     scene.setCallbacks(
       (square: Square) => handleSquareSelect(square),
-      (from: Square, to: Square) => handleMoveAttempt(from, to)
+      (from: Square, to: Square) => handleMoveAttempt(from, to),
+      () => updateMatedKingScreenCoords()
     );
 
     return () => {
@@ -129,10 +140,27 @@ export const App: React.FC = () => {
     setIsGameOver(true);
     const win = loser === 'w' ? 'b' : 'w';
     setWinner(win);
-    setGameOverReason(settings.language === 'vi' ? 'Hết thời gian thi đấu!' : 'Flagged on time!');
-    setIsGameOverModalOpen(true);
-    if (win === playerColor) sounds.playVictory();
-    else sounds.playDefeat();
+    setGameOverReason('Won on time');
+    if (win === playerColor) {
+      sounds.playVictory();
+      confetti({ particleCount: 70, spread: 65, origin: { y: 0.6 } });
+    } else {
+      sounds.playDefeat();
+    }
+  };
+
+  // Helper: Find a King's square on the board
+  const findKingSquare = (kingColor: Color): Square | null => {
+    const board = chess.board();
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const p = board[r][c];
+        if (p && p.type === 'k' && p.color === kingColor) {
+          return p.square;
+        }
+      }
+    }
+    return null;
   };
 
   // 3. User Selects a Piece / Square
@@ -192,19 +220,16 @@ export const App: React.FC = () => {
       sceneRef.current?.clearHint();
       setHintInfo(null);
 
-      // Play authentic move sound
       if (result.captured) sounds.playCapture();
       else if (result.san.includes('O-O')) sounds.playCastle();
       else if (chess.inCheck()) sounds.playCheck();
       else sounds.playMove();
 
-      // Animate piece
       sceneRef.current?.animateMove(from, to, () => {
         sceneRef.current?.updateBoard(chess);
       });
 
       setTurn(chess.turn());
-      setInCheck(chess.inCheck());
 
       const rec: MoveRecord = {
         san: result.san,
@@ -236,7 +261,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // 6. Bot Move Execution
+  // 6. Bot Move Execution (Human-speed response)
   const triggerBot = useCallback(() => {
     setIsBotThinking(true);
 
@@ -264,7 +289,6 @@ export const App: React.FC = () => {
           });
 
           setTurn(chess.turn());
-          setInCheck(chess.inCheck());
 
           const rec: MoveRecord = {
             san: moveRes.san,
@@ -294,36 +318,48 @@ export const App: React.FC = () => {
     });
   }, [chess, selectedBot, playerColor, moveHistory.length]);
 
-  // 7. Check Game Over
+  // 7. Check Game Over (Chess.com Checkmate Popup on Checkmated King!)
   const checkGameEnd = () => {
     if (chess.isCheckmate()) {
       setIsGameOver(true);
-      const win = chess.turn() === 'w' ? 'b' : 'w';
+      const loserColor = chess.turn();
+      const win = loserColor === 'w' ? 'b' : 'w';
       setWinner(win);
-      setGameOverReason(t.checkmate);
-      setIsGameOverModalOpen(true);
-      if (win === playerColor) sounds.playVictory();
-      else sounds.playDefeat();
+      setGameOverReason('Checkmate');
+
+      const kingSq = findKingSquare(loserColor);
+      matedKingSquareRef.current = kingSq;
+      setMatedKingSquare(kingSq);
+      if (kingSq && sceneRef.current) {
+        setMatedKingScreenPos(sceneRef.current.getKingTopRightScreenPosition(kingSq));
+      }
+
+      if (win === playerColor) {
+        sounds.playVictory();
+        confetti({
+          particleCount: 85,
+          spread: 75,
+          origin: { y: 0.6 }
+        });
+      } else {
+        sounds.playDefeat();
+      }
     } else if (chess.isStalemate()) {
       setIsGameOver(true);
       setWinner('draw');
-      setGameOverReason(t.drawStalemate);
-      setIsGameOverModalOpen(true);
+      setGameOverReason('Stalemate');
     } else if (chess.isThreefoldRepetition()) {
       setIsGameOver(true);
       setWinner('draw');
-      setGameOverReason(t.drawRepetition);
-      setIsGameOverModalOpen(true);
+      setGameOverReason('Threefold Repetition');
     } else if (chess.isInsufficientMaterial()) {
       setIsGameOver(true);
       setWinner('draw');
-      setGameOverReason(t.drawMaterial);
-      setIsGameOverModalOpen(true);
+      setGameOverReason('Insufficient Material');
     } else if (chess.isDraw()) {
       setIsGameOver(true);
       setWinner('draw');
-      setGameOverReason(t.draw50Moves);
-      setIsGameOverModalOpen(true);
+      setGameOverReason('50-Move Rule');
     }
   };
 
@@ -331,6 +367,9 @@ export const App: React.FC = () => {
   const handleStartGame = (bot?: BotProfile, col?: Color, tc?: TimeControl) => {
     chess.reset();
     selectedSquareRef.current = null;
+    matedKingSquareRef.current = null;
+    setMatedKingSquare(null);
+    setMatedKingScreenPos(null);
 
     const newBot = bot || selectedBot;
     const newCol = col || playerColor;
@@ -354,7 +393,6 @@ export const App: React.FC = () => {
     sceneRef.current?.updateBoard(chess);
 
     setTurn(chess.turn());
-    setInCheck(false);
     setIsGameOver(false);
     setWinner(null);
     setGameOverReason('');
@@ -363,21 +401,27 @@ export const App: React.FC = () => {
     setHintInfo(null);
 
     setIsBotModalOpen(false);
-    setIsGameOverModalOpen(false);
 
     if (newCol === 'b') {
-      setTimeout(() => triggerBot(), 500);
+      setTimeout(() => triggerBot(), 220);
     }
   };
 
   // 9. Undo Move
   const handleUndo = () => {
-    if (isGameOver || isBotThinking || moveHistory.length === 0) return;
+    if (isBotThinking || moveHistory.length === 0) return;
 
     const undos = chess.turn() === playerColor ? 2 : 1;
     for (let i = 0; i < undos; i++) {
       chess.undo();
     }
+
+    matedKingSquareRef.current = null;
+    setMatedKingSquare(null);
+    setMatedKingScreenPos(null);
+    setIsGameOver(false);
+    setWinner(null);
+    setGameOverReason('');
 
     selectedSquareRef.current = null;
     sceneRef.current?.setSelection(null, []);
@@ -385,27 +429,8 @@ export const App: React.FC = () => {
     sceneRef.current?.updateBoard(chess);
 
     setTurn(chess.turn());
-    setInCheck(chess.inCheck());
     setMoveHistory((prev) => prev.slice(0, Math.max(0, prev.length - undos)));
     setHintInfo(null);
-
-    // Rebuild captured
-    const full: PieceSymbol[] = ['p','p','p','p','p','p','p','p','r','r','n','n','b','b','q','k'];
-    const wRem: PieceSymbol[] = [...full];
-    const bRem: PieceSymbol[] = [...full];
-    chess.board().forEach((row) => {
-      row.forEach((sq) => {
-        if (sq) {
-          const list = sq.color === 'w' ? wRem : bRem;
-          const idx = list.indexOf(sq.type);
-          if (idx > -1) list.splice(idx, 1);
-        }
-      });
-    });
-    setCapturedPieces({
-      w: bRem.filter((p): p is PieceSymbol => p !== 'k'),
-      b: wRem.filter((p): p is PieceSymbol => p !== 'k')
-    });
   };
 
   // 10. Flip Board
@@ -435,132 +460,202 @@ export const App: React.FC = () => {
     setIsGameOver(true);
     const win = playerColor === 'w' ? 'b' : 'w';
     setWinner(win);
-    setGameOverReason(settings.language === 'vi' ? 'Bạn đã chịu thua.' : 'Player resigned.');
-    setIsGameOverModalOpen(true);
+    setGameOverReason('Resigned');
     sounds.playDefeat();
   };
 
-  // Turn Text for bottom wooden rim (matches reference photo: "1. White's move")
+  // Determine Arya's Companion State
+  const aryaState: AryaState = isGameOver
+    ? winner === playerColor
+      ? 'victory'
+      : winner === 'draw'
+      ? 'draw'
+      : 'defeat'
+    : isBotThinking
+    ? 'bot_moving'
+    : 'thinking';
+
+  // Clean Chess.com style turn & move text
   const currentMoveNumber = Math.floor(moveHistory.length / 2) + 1;
-  const currentMoveText = turn === 'w'
-    ? `${currentMoveNumber}. White's move`
-    : `${currentMoveNumber}. Black's move`;
+  const lastMoveSan = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1].san : null;
+  const statusText = isGameOver
+    ? `${gameOverReason} • ${winner === 'w' ? '1-0' : winner === 'b' ? '0-1' : '½-½'}`
+    : turn === 'w'
+    ? `${currentMoveNumber}. White to move`
+    : `${currentMoveNumber}... Black to move`;
+
+  const formatClock = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#160f0a] text-[#ede8e1] select-none font-sans">
-      {/* 3D Viewport: Fullscreen wooden table & board */}
+    <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#160f0a] text-[#f1f1f1] select-none font-sans">
+      {/* 3D Viewport: Fullscreen chill cafe wooden table & board (supports 2-finger touchpad pinch/scroll zoom) */}
       <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full cursor-pointer" />
 
       {/* ========================================================
-          TOP-LEFT CORNER ICONS (MATCHING USER REFERENCE PHOTO)
+          CHESS.COM CHECKMATE POPUP ON TOP-RIGHT OF CHECKMATED KING
           ======================================================== */}
-      <div className="absolute top-5 left-5 z-20 flex flex-col gap-3.5">
-        {/* 1. Hamburger Menu Button (Square with 3 white lines) */}
+      {isGameOver && matedKingSquare && matedKingScreenPos && (
+        <div
+          style={{
+            left: `${matedKingScreenPos.x}px`,
+            top: `${matedKingScreenPos.y}px`
+          }}
+          className="fixed z-30 pointer-events-none animate-checkmate-pop flex items-center gap-2"
+        >
+          {/* Iconic Chess.com Red Checkmate '#' Circle Badge right on the King's top-right corner */}
+          <div className="w-8 h-8 rounded-full bg-[#e53935] border-2 border-white shadow-[0_4px_14px_rgba(229,57,53,0.75)] flex items-center justify-center text-white font-black text-base leading-none shrink-0">
+            #
+          </div>
+
+          {/* Clean Chess.com Checkmate Callout Pill */}
+          <div className="px-3 py-1.5 rounded-lg bg-[#262421]/95 border border-white/15 shadow-[0_8px_24px_rgba(0,0,0,0.65)] backdrop-blur-md flex items-center gap-2 whitespace-nowrap">
+            <span className="text-xs font-extrabold tracking-tight text-white">
+              Checkmate
+            </span>
+            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-[#e53935]/20 text-[#ff8a80]">
+              {winner === 'w' ? '1-0' : '0-1'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          TOP-LEFT CORNER CONTROLS (Clean Chess.com Dark Slate Icons)
+          ======================================================== */}
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-2.5">
         <button
           onClick={() => setIsMenuDrawerOpen(true)}
-          className="w-12 h-12 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95"
-          title={t.menu}
+          className="w-10 h-10 rounded-lg bg-[#262421]/85 hover:bg-[#312e2b] border border-white/12 text-[#e2ded9] hover:text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+          title="Menu"
         >
-          <Menu className="w-7 h-7 text-white stroke-[2.5]" />
+          <Menu className="w-5 h-5" />
         </button>
 
-        {/* 2. Reset / Rotate / Flip Button (Circular arrow) */}
         <button
           onClick={handleFlip}
-          className="w-12 h-12 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95 text-2xl font-bold"
-          title={t.flipBoard}
+          className="w-10 h-10 rounded-lg bg-[#262421]/85 hover:bg-[#312e2b] border border-white/12 text-[#e2ded9] hover:text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95 text-lg font-bold cursor-pointer"
+          title="Flip Board"
         >
-          <span className="text-white text-2xl -mt-0.5">↻</span>
+          ↻
         </button>
       </div>
 
       {/* ========================================================
-          TOP-RIGHT CORNER ICONS (MATCHING USER REFERENCE PHOTO)
+          TOP-RIGHT CORNER CONTROLS (Undo, Hint, Zoom +/-)
           ======================================================== */}
-      <div className="absolute top-5 right-5 z-20 flex flex-col gap-3.5 items-end">
-        {/* 1. Undo Button (Curved counterclockwise arrow) */}
+      <div className="absolute top-4 right-4 z-20 flex flex-col gap-2.5 items-end">
         <button
           onClick={handleUndo}
-          disabled={moveHistory.length === 0 || isBotThinking || isGameOver}
-          className="w-12 h-12 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95 disabled:opacity-25 disabled:pointer-events-none text-2xl font-bold"
-          title={t.undo}
+          disabled={moveHistory.length === 0 || isBotThinking}
+          className="w-10 h-10 rounded-lg bg-[#262421]/85 hover:bg-[#312e2b] border border-white/12 text-[#e2ded9] hover:text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95 disabled:opacity-30 disabled:pointer-events-none text-lg font-bold cursor-pointer"
+          title="Undo Move"
         >
-          <span className="text-white text-2xl -mt-1 font-bold">↶</span>
+          ↶
         </button>
 
-        {/* 2. Piece Theme Toggle Button (Pawn outline / Liquid glass toggle) */}
-        <button
-          onClick={() => {
-            const nextTheme = settings.pieceTheme === 'classic-wood' ? 'liquid-glass' : 'classic-wood';
-            setSettings((s) => ({ ...s, pieceTheme: nextTheme }));
-          }}
-          className="w-12 h-12 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95"
-          title={settings.pieceTheme === 'classic-wood' ? 'Bật chế độ Thủy Tinh Lỏng' : 'Chuyển về Gỗ Cổ Điển'}
-        >
-          {settings.pieceTheme === 'classic-wood' ? (
-            <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[2]">
-              {/* Clean pawn silhouette icon matching photo */}
-              <circle cx="12" cy="6" r="3" />
-              <path d="M9 10h6c0 3-1.5 5-1.5 7h3.5v3H7v-3h3.5c0-2-1.5-4-1.5-7z" />
-            </svg>
-          ) : (
-            <span className="text-2xl">💎</span>
-          )}
-        </button>
-
-        {/* 3. Lightbulb Hint Button (Outlined lightbulb) */}
         <button
           onClick={handleHint}
           disabled={isBotThinking || isGameOver || chess.turn() !== playerColor}
-          className="w-12 h-12 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95 disabled:opacity-25 disabled:pointer-events-none"
-          title={t.hint}
+          className="w-10 h-10 rounded-lg bg-[#262421]/85 hover:bg-[#312e2b] border border-white/12 text-[#e2ded9] hover:text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-95 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+          title="Hint"
         >
-          <svg viewBox="0 0 24 24" className="w-7 h-7 fill-none stroke-white stroke-[2]">
+          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-none stroke-current stroke-[2]">
             <path d="M9 18h6m-4 3h2m-5-9a6 6 0 1 1 8 0c-.8.8-1.5 2-1.5 3h-5c0-1-.7-2.2-1.5-3z" />
           </svg>
         </button>
+
+        <div className="flex flex-col rounded-lg bg-[#262421]/85 border border-white/12 shadow-lg backdrop-blur-md overflow-hidden">
+          <button
+            onClick={() => sceneRef.current?.adjustZoom(0.12)}
+            className="w-10 h-9 hover:bg-[#312e2b] text-[#e2ded9] hover:text-white flex items-center justify-center border-b border-white/8 transition-colors cursor-pointer"
+            title="Zoom In (or pinch touchpad)"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => sceneRef.current?.adjustZoom(-0.12)}
+            className="w-10 h-9 hover:bg-[#312e2b] text-[#e2ded9] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            title="Zoom Out (or pinch touchpad)"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* ========================================================
-          BOTTOM BEVEL TEXT (100% IDENTICAL TO REFERENCE PHOTO!)
-          "BEGINNER LEVEL" on the left, "1. White's move" on the right
+          ARYA ANIME COMPANION (Thinking emotion & Victory Jump!)
           ======================================================== */}
-      <div className="absolute bottom-2.5 left-0 right-0 z-20 pointer-events-none flex justify-center px-4">
-        <div className="w-full max-w-[560px] flex items-center justify-between text-[13px] tracking-wider text-[#d4c3b7] drop-shadow-md select-none font-serif">
-          {/* Left: Level / Bot Name (e.g. "BEGINNER LEVEL") */}
-          <span className="font-semibold tracking-widest text-[#e8dacd] uppercase opacity-90">
-            {selectedBot.id === 'jimmy' ? 'BEGINNER LEVEL' : `${selectedBot.name.toUpperCase()} (${selectedBot.elo})`}
+      <AryaCompanion
+        state={aryaState}
+        botName={selectedBot.name}
+        botElo={selectedBot.elo}
+        onClickChangeBot={() => setIsBotModalOpen(true)}
+      />
+
+      {/* ========================================================
+          CLEAN CHESS.COM-STYLE BOTTOM BAR
+          ======================================================== */}
+      <div className="absolute bottom-3 left-0 right-0 z-20 pointer-events-none flex justify-center px-4">
+        <div className="pointer-events-auto px-4 py-1.5 rounded-lg bg-[#262421]/90 border border-white/10 shadow-lg backdrop-blur-md flex items-center gap-4 text-xs">
+          {/* Last move pill if available */}
+          {lastMoveSan && (
+            <span className="px-2 py-0.5 rounded bg-[#312e2b] text-[#81b64c] font-bold">
+              {lastMoveSan}
+            </span>
+          )}
+
+          {/* Turn or Game Over status */}
+          <span className="font-semibold text-[#e2ded9]">
+            {statusText}
           </span>
 
-          {/* Right: Current Turn in Italic (e.g. "1. White's move") */}
-          <span className="italic font-serif text-[13px] tracking-wide text-[#eedfd2] opacity-95">
-            {currentMoveText}
-          </span>
+          {/* Clock if timed */}
+          {timeControl !== 'unlimited' && (
+            <span className="font-mono font-bold text-white bg-[#1f1e1b] px-2 py-0.5 rounded border border-white/8">
+              {formatClock(playerColor === 'w' ? whiteTime : blackTime)}
+            </span>
+          )}
+
+          {/* Hint move pill if active */}
+          {hintInfo && !isGameOver && (
+            <span className="text-[#81b64c] font-bold">
+              Hint: {hintInfo.from.toUpperCase()} → {hintInfo.to.toUpperCase()}
+            </span>
+          )}
+
+          {/* Inline Rematch / Change Bot buttons on Game Over */}
+          {isGameOver && (
+            <div className="flex items-center gap-1.5 pl-2 border-l border-white/12">
+              <button
+                onClick={() => handleStartGame()}
+                className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#81b64c] hover:bg-[#91c859] text-white font-bold text-xs transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Rematch</span>
+              </button>
+              <button
+                onClick={() => setIsBotModalOpen(true)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#312e2b] hover:bg-[#3d3935] text-white font-semibold text-xs transition-colors cursor-pointer"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Bots</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Subtle Hint Banner (only when Hint 💡 is tapped) */}
-      {hintInfo && (
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-black/75 border border-amber-400/60 text-amber-200 text-xs font-semibold px-4 py-1.5 rounded-full shadow-2xl animate-fadeIn flex items-center gap-2 backdrop-blur-sm">
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          <span>{hintInfo.from.toUpperCase()} ➔ {hintInfo.to.toUpperCase()}</span>
-        </div>
-      )}
-
-      {/* Check Alert Banner */}
-      {inCheck && !isGameOver && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-[#4a1010]/85 border border-red-500/70 text-red-200 text-xs font-bold px-4 py-1.5 rounded-full shadow-2xl animate-pulse tracking-wide backdrop-blur-sm">
-          {t.check}
-        </div>
-      )}
-
-      {/* SLIDE-OUT MENU DRAWER (Triggered by ☰ Button) */}
+      {/* SLIDE-OUT MENU DRAWER */}
       <MenuDrawer
         isOpen={isMenuDrawerOpen}
         bot={selectedBot}
         settings={settings}
         moveHistory={moveHistory}
-        language={settings.language}
+        language="en"
         onClose={() => setIsMenuDrawerOpen(false)}
         onOpenBotSelector={() => setIsBotModalOpen(true)}
         onRestartMatch={() => handleStartGame()}
@@ -568,13 +663,13 @@ export const App: React.FC = () => {
         onUpdateSettings={(newVals) => setSettings((s) => ({ ...s, ...newVals }))}
       />
 
-      {/* BOT SELECTOR MODAL */}
+      {/* BOT SELECTOR MODAL (Opens on startup & when clicking Change Bot) */}
       <BotSelectorModal
         isOpen={isBotModalOpen}
         selectedBot={selectedBot}
         selectedColor={playerColor}
         timeControl={timeControl}
-        language={settings.language}
+        language="en"
         onSelectBot={setSelectedBot}
         onSelectColor={setPlayerColor}
         onSelectTimeControl={setTimeControl}
@@ -586,43 +681,28 @@ export const App: React.FC = () => {
       <PromotionModal
         isOpen={pendingPromotion !== null}
         color={playerColor}
-        language={settings.language}
+        language="en"
         onSelectPiece={handlePromotionSelect}
-      />
-
-      {/* GAME OVER MODAL */}
-      <GameOverModal
-        isOpen={isGameOverModalOpen}
-        winner={winner}
-        reason={gameOverReason}
-        playerColor={playerColor}
-        bot={selectedBot}
-        language={settings.language}
-        onRematch={() => handleStartGame()}
-        onChangeBot={() => {
-          setIsGameOverModalOpen(false);
-          setIsBotModalOpen(true);
-        }}
       />
 
       {/* RESIGN CONFIRMATION */}
       {isResignConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-[#1c1511] text-[#ede8e1] rounded-xl border border-[#443326] p-5 shadow-2xl text-center">
-            <h4 className="text-base font-bold text-white mb-2">{t.confirmResignTitle}</h4>
-            <p className="text-xs text-[#a89a8e] mb-5">{t.confirmResignMsg}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs">
+          <div className="w-full max-w-xs bg-[#262421] text-[#f1f1f1] rounded-xl border border-white/12 p-5 shadow-2xl text-center">
+            <h4 className="text-sm font-bold text-white mb-1.5">{t.confirmResignTitle}</h4>
+            <p className="text-xs text-[#9e9b95] mb-4">{t.confirmResignMsg}</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setIsResignConfirmOpen(false)}
-                className="flex-1 py-2 rounded-lg bg-[#291e17] text-xs font-semibold hover:bg-[#382920] transition-colors"
+                className="flex-1 py-2 rounded-lg bg-[#312e2b] text-xs font-semibold hover:bg-[#3d3935] transition-colors cursor-pointer"
               >
-                {t.confirmNo}
+                Cancel
               </button>
               <button
                 onClick={confirmResign}
-                className="flex-1 py-2 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-xs font-bold text-white shadow-lg transition-colors"
+                className="flex-1 py-2 rounded-lg bg-[#e53935] hover:bg-[#d32f2f] text-xs font-bold text-white shadow-md transition-colors cursor-pointer"
               >
-                {t.confirmYes}
+                Resign
               </button>
             </div>
           </div>

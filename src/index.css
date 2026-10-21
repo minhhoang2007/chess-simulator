@@ -5,51 +5,46 @@
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
   }
-  
+
   body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden;
   }
 }
 
-.font-serif-luxury {
-  font-family: 'Cinzel', Georgia, serif;
+@keyframes aryaCelebrate {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    transform: translateY(-14px) scale(1.04);
+  }
+  75% {
+    transform: translateY(-4px) scale(1.01);
+  }
 }
 
-.font-mono-eval {
-  font-family: 'JetBrains Mono', monospace;
+.animate-arya-celebrate {
+  animation: aryaCelebrate 0.65s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 
-/* Custom glassmorphism utilities */
-.glass-panel {
-  background: rgba(18, 22, 34, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+@keyframes checkmatePop {
+  0% {
+    opacity: 0;
+    transform: translate(-15%, -85%) scale(0.45);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-15%, -102%) scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-15%, -96%) scale(1);
+  }
 }
 
-.glass-panel-subtle {
-  background: rgba(22, 28, 45, 0.55);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-button {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.glass-button:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-.glass-button:active {
-  transform: translateY(0);
+.animate-checkmate-pop {
+  animation: checkmatePop 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
 }
 
 /* Custom Scrollbar */
