@@ -1,12 +1,49 @@
 import * as THREE from 'three';
+import { PieceSymbol, Color } from 'chess.js';
 import { BoardTheme } from '../types/chess';
 
 export class TextureGenerator {
   private static loader = new THREE.TextureLoader();
+  private static pieceSpriteCache: Map<string, THREE.Texture> = new Map();
+
+  /**
+   * Loads the authentic 1080p lossless piece sprite extracted directly from
+   * com.jetstartgames.chess for the given piece type, color, and column (0..7).
+   */
+  public static getPieceSpriteTexture(
+    type: PieceSymbol,
+    color: Color,
+    visualFile: number,
+    maxAnisotropy: number = 8
+  ): THREE.Texture {
+    const clampedFile = Math.max(0, Math.min(7, visualFile));
+    let spriteName: string;
+
+    if (type === 'p') {
+      spriteName = `${color}P_${clampedFile}`;
+    } else if (type === 'r' || type === 'n' || type === 'b') {
+      const side = clampedFile < 4 ? 'L' : 'R';
+      spriteName = `${color}${type.toUpperCase()}_${side}`;
+    } else {
+      spriteName = `${color}${type.toUpperCase()}`;
+    }
+
+    if (this.pieceSpriteCache.has(spriteName)) {
+      return this.pieceSpriteCache.get(spriteName)!;
+    }
+
+    const texture = this.loader.load(`/textures/pieces/${spriteName}.png`);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.anisotropy = maxAnisotropy;
+    this.pieceSpriteCache.set(spriteName, texture);
+    return texture;
+  }
 
   /**
    * Loads the authentic photographic dark rustic wood plank table texture
-   * extracted directly from the user's reference photo.
+   * extracted directly from the 1080p reference image.
    */
   public static createWoodTableTexture(maxAnisotropy: number = 8): THREE.Texture {
     const texture = this.loader.load('/textures/table_photo.jpg');
@@ -20,7 +57,7 @@ export class TextureGenerator {
 
   /**
    * Loads the authentic photographic 8x8 maple & walnut chessboard texture
-   * extracted directly from the user's reference photo (or fallback theme).
+   * extracted directly from the 1080p reference image (or fallback theme).
    */
   public static createChessboardTexture(
     boardTheme: BoardTheme,
@@ -41,7 +78,7 @@ export class TextureGenerator {
     canvas.height = size;
     const ctx = canvas.getContext('2d')!;
 
-    const borderSize = 84;
+    const borderSize = 50;
     const boardArea = size - borderSize * 2;
     const sqSize = boardArea / 8;
 
@@ -67,7 +104,7 @@ export class TextureGenerator {
 
     if (showCoords) {
       ctx.fillStyle = '#f8fafc';
-      ctx.font = 'bold 34px Helvetica, Arial, sans-serif';
+      ctx.font = 'bold 30px Helvetica, Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -88,10 +125,6 @@ export class TextureGenerator {
     return texture;
   }
 
-  /**
-   * Generates a soft radial ambient occlusion contact shadow texture
-   * placed under each piece base so pieces look grounded like in the photo.
-   */
   public static createContactShadowTexture(): THREE.CanvasTexture {
     const size = 128;
     const canvas = document.createElement('canvas');
@@ -118,7 +151,6 @@ export class TextureGenerator {
     const sphereMat = new THREE.MeshBasicMaterial({ color: 0x241d18, side: THREE.BackSide });
     scene.add(new THREE.Mesh(sphereGeo, sphereMat));
 
-    // Bright overhead-front studio softbox (creates the crisp specular highlight on pawn heads!)
     const softbox1 = new THREE.Mesh(
       new THREE.PlaneGeometry(14, 14),
       new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
@@ -127,7 +159,6 @@ export class TextureGenerator {
     softbox1.lookAt(0, 0, 0);
     scene.add(softbox1);
 
-    // Warm rim softbox
     const softbox2 = new THREE.Mesh(
       new THREE.PlaneGeometry(12, 12),
       new THREE.MeshBasicMaterial({ color: 0xffeacc, side: THREE.DoubleSide })
