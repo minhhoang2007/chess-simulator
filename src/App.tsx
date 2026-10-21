@@ -406,14 +406,19 @@ export const App: React.FC = () => {
     setIsFlipped(flipped);
     sceneRef.current?.flipBoard(flipped);
 
-    // Snappy ultra-fast piece arrangement effect ("sắp lần lượt các quân nhưng cực nhanh")
-    sounds.playMove();
-    sceneRef.current?.animateBoardSetup(chess, () => {
-      // If player is playing black, trigger bot after board setup completes
-      if (newCol === 'b') {
-        setTimeout(() => triggerBot(), 150);
+    // Eye-catching synchronized piece jump-in arrangement with wooden tap sounds
+    sceneRef.current?.animateBoardSetup(
+      chess,
+      () => {
+        // If player is playing black, trigger bot after board setup completes
+        if (newCol === 'b') {
+          setTimeout(() => triggerBot(), 180);
+        }
+      },
+      (stepIdx: number) => {
+        sounds.playSetupTap(stepIdx);
       }
-    });
+    );
 
     setTurn(chess.turn());
     setIsGameOver(false);

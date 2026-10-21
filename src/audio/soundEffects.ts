@@ -55,6 +55,59 @@ class SoundSynthesizer {
     osc.stop(t + 0.09);
   }
 
+  /**
+   * Crisp wooden tap sound when each pair of pieces lands on the board during initial setup.
+   * Uses a warm wood-knock envelope with subtle pitch variation across the 16 steps.
+   */
+  public playSetupTap(stepIndex: number = 0) {
+    if (!this.enabled) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Slight musical/natural pitch curve across the 16 steps so rapid taps feel organic
+    const pitchFactor = 0.94 + (stepIndex / 15) * 0.18 + (Math.random() * 0.04 - 0.02);
+
+    // 1. Warm wooden body thud
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(720 * pitchFactor, t);
+    filter.Q.setValueAtTime(2.2, t);
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(310 * pitchFactor, t);
+    osc.frequency.exponentialRampToValueAtTime(82 * pitchFactor, t + 0.055);
+
+    gain.gain.setValueAtTime(0.28, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.065);
+
+    // 2. Crisp felt/stone contact click
+    const clickOsc = this.ctx.createOscillator();
+    const clickGain = this.ctx.createGain();
+    clickOsc.type = 'sine';
+    clickOsc.frequency.setValueAtTime(1350 * pitchFactor, t);
+    clickOsc.frequency.exponentialRampToValueAtTime(420 * pitchFactor, t + 0.022);
+
+    clickGain.gain.setValueAtTime(0.11, t);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+
+    clickOsc.connect(clickGain);
+    clickGain.connect(this.ctx.destination);
+
+    clickOsc.start(t);
+    clickOsc.stop(t + 0.028);
+  }
+
   public playCapture() {
     if (!this.enabled) return;
     this.initContext();
