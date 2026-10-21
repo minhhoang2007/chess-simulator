@@ -323,7 +323,16 @@ export class ChessScene {
     return `${file}${rank}` as Square;
   }
 
-  // --- BOARD SYNC ---
+  // --- BOARD SYNC & CLEAR ---
+  public clearBoard() {
+    for (const mesh of this.piecesMap.values()) {
+      this.scene.remove(mesh);
+    }
+    this.piecesMap.clear();
+    this.refreshHighlights();
+    this.clearHint();
+  }
+
   public updateBoard(game: Chess) {
     const currentBoard = game.board();
     const activeSquares = new Set<Square>();
@@ -360,6 +369,101 @@ export class ChessScene {
         this.piecesMap.delete(sq);
       }
     }
+  }
+
+  /**
+   * Ultra-fast cascaded setup animation ("sắp lần lượt các quân nhưng cực nhanh")
+   * Total duration ~450ms. Pieces drop onto the board with a slight snappy bounce.
+   */
+  public animateBoardSetup(game: Chess, onFinish?: () => void) {
+    this.clearBoard();
+
+    const currentBoard = game.board();
+    const piecesToSpawn: { square: Square; type: PieceSymbol; color: Color; rankIdx: number; fileIdx: number }[] = [];
+
+    // Collect all pieces to setup
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const p = currentBoard[r][c];
+        if (p) {
+          piecesToSpawn.push({
+            square: p.square,
+            type: p.type,
+            color: p.color,
+            rankIdx: r,
+            fileIdx: c
+          });
+        }
+      }
+    }
+
+    // Sort order: Back ranks first (Black back rank, White back rank), then pawns (Black pawns, White pawns)
+    // or rank by rank from outside inward so it looks like an authentic tournament setup
+    // Rank 8 & Rank 1 (royals/officers), then Rank 7 & Rank 2 (pawns)
+    piecesToSpawn.sort((a, b) => {
+      const getPriority = (rankIdx: number) => {
+        if (rankIdx === 0 || rankIdx === 7) return 0; // Back rank officers
+        return 1; // Pawns
+      };
+      const prioDiff = getPriority(a.rankIdx) - getPriority(b.rankIdx);
+      if (prioDiff !== 0) return prioDiff;
+      // Along the rank, sort symmetrically from outside (rooks -> knights -> bishops -> royalty)
+      const distFromCenterA = Math.abs(a.fileIdx - 3.5);
+      const distFromCenterB = Math.abs(b.fileIdx - 3.5);
+      return distFromCenterB - distFromCenterA;
+    });
+
+    const totalPieces = piecesToSpawn.length;
+    let placedCount = 0;
+    const staggerIntervalMs = 11; // Extremely fast stagger (~11ms between each piece spawn)
+    const dropDurationMs = 120; // Fast snappy drop duration
+
+    piecesToSpawn.forEach((item, index) => {
+      setTimeout(() => {
+        const mesh = this.createPieceMesh(item.square, item.type, item.color);
+        const targetPos = this.squareToPosition(item.square);
+        const dropHeight = 1.35; // Drops from 1.35 units above the board
+
+        // Spawn high and transparent/scaled if needed
+        mesh.position.set(targetPos.x, targetPos.y + dropHeight, targetPos.z);
+        if (mesh.userData.shadowMesh) {
+          mesh.userData.shadowMesh.position.set(targetPos.x, 0.221, targetPos.z);
+          mesh.userData.shadowMesh.scale.set(0.3, 0.3, 0.3);
+        }
+
+        const startTime = performance.now();
+        const animStep = () => {
+          const elapsed = performance.now() - startTime;
+          const progress = Math.min(elapsed / dropDurationMs, 1);
+
+          // Snappy overshoot bounce easing: starts fast, lands, tiny micro-bounce
+          // EaseOutBack-style bounce
+          const c1 = 1.4;
+          const c3 = c1 + 1;
+          const p = 1 - progress;
+          const easeBounce = 1 - (p * p * (c3 * p - c1));
+
+          const curY = targetPos.y + dropHeight * (1 - Math.min(1.08, easeBounce));
+          this.setPiecePosition(mesh, new THREE.Vector3(targetPos.x, curY, targetPos.z));
+
+          if (mesh.userData.shadowMesh) {
+            const shadowScale = 0.3 + 0.7 * Math.min(1, easeBounce);
+            mesh.userData.shadowMesh.scale.set(shadowScale, shadowScale, shadowScale);
+          }
+
+          if (progress < 1) {
+            requestAnimationFrame(animStep);
+          } else {
+            this.setPiecePosition(mesh, targetPos);
+            placedCount++;
+            if (placedCount >= totalPieces && onFinish) {
+              onFinish();
+            }
+          }
+        };
+        requestAnimationFrame(animStep);
+      }, index * staggerIntervalMs);
+    });
   }
 
   private createPieceMesh(square: Square, type: PieceSymbol, color: Color): THREE.Mesh {

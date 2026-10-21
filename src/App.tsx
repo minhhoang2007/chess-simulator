@@ -85,7 +85,8 @@ export const App: React.FC = () => {
     scene.setTheme(settings.pieceTheme, settings.boardTheme, settings.showCoordinates);
     scene.setCameraMode('photo');
     scene.setPreviewMode(true);
-    scene.updateBoard(chess);
+    // At startup: board is clear/empty per user request. Pieces are set up with fast cascade when game starts!
+    scene.clearBoard();
 
     scene.setCallbacks(
       (square: Square) => handleSquareSelect(square),
@@ -404,7 +405,15 @@ export const App: React.FC = () => {
     const flipped = newCol === 'b';
     setIsFlipped(flipped);
     sceneRef.current?.flipBoard(flipped);
-    sceneRef.current?.updateBoard(chess);
+
+    // Snappy ultra-fast piece arrangement effect ("sắp lần lượt các quân nhưng cực nhanh")
+    sounds.playMove();
+    sceneRef.current?.animateBoardSetup(chess, () => {
+      // If player is playing black, trigger bot after board setup completes
+      if (newCol === 'b') {
+        setTimeout(() => triggerBot(), 150);
+      }
+    });
 
     setTurn(chess.turn());
     setIsGameOver(false);
@@ -416,10 +425,6 @@ export const App: React.FC = () => {
 
     setHasGameStarted(true);
     setIsBotModalOpen(false);
-
-    if (newCol === 'b') {
-      setTimeout(() => triggerBot(), 220);
-    }
   };
 
   // 9. Undo Move
