@@ -635,6 +635,20 @@ export class ChessScene {
     if (this.onCameraChangeCallback) this.onCameraChangeCallback();
   }
 
+  public setPreviewMode(isPreview: boolean) {
+    if (isPreview) {
+      this.targetZoomScale = 0.72; // Compact, zoomed-out board preview on starting interface
+      if (this.zoomScale === 1.0) {
+        this.zoomScale = 0.72;
+        this.camera.fov = this.PHOTO_CAMERA_FOV / this.zoomScale;
+        this.camera.updateProjectionMatrix();
+        if (this.onCameraChangeCallback) this.onCameraChangeCallback();
+      }
+    } else {
+      this.targetZoomScale = 1.0; // Smoothly glide into standard playing size
+    }
+  }
+
   public adjustZoom(deltaScale: number) {
     this.targetZoomScale = THREE.MathUtils.clamp(
       this.targetZoomScale + deltaScale,

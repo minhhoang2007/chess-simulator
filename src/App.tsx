@@ -84,6 +84,7 @@ export const App: React.FC = () => {
 
     scene.setTheme(settings.pieceTheme, settings.boardTheme, settings.showCoordinates);
     scene.setCameraMode('photo');
+    scene.setPreviewMode(true);
     scene.updateBoard(chess);
 
     scene.setCallbacks(
@@ -109,6 +110,11 @@ export const App: React.FC = () => {
       sceneRef.current.setCameraMode(settings.cameraTilt);
     }
   }, [settings.pieceTheme, settings.boardTheme, settings.showCoordinates, settings.cameraTilt]);
+
+  // Smoothly zoom board out in starting/preview interface, and zoom into game when starting
+  useEffect(() => {
+    sceneRef.current?.setPreviewMode(isBotModalOpen);
+  }, [isBotModalOpen]);
 
   // 2. Clock Timer
   useEffect(() => {
