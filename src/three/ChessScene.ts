@@ -65,7 +65,7 @@ export class ChessScene {
 
     // 1. Scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a110b);
+    this.scene.background = new THREE.Color(0x16171a);
 
     // 2. Camera (exact perspective calibration of com.jetstartgames.chess)
     const aspect = container.clientWidth / container.clientHeight;

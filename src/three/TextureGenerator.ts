@@ -42,15 +42,14 @@ export class TextureGenerator {
   }
 
   /**
-   * Loads the authentic photographic dark rustic wood plank table texture
-   * extracted directly from the 1080p reference image.
+   * Loads the 2048x2048 luxury honed Pietra Grey & warm gold-veined marble stone table texture.
    */
   public static createWoodTableTexture(maxAnisotropy: number = 8): THREE.Texture {
-    const texture = this.loader.load('/textures/table_photo.jpg?v=3');
+    const texture = this.loader.load('/textures/table_photo.jpg?v=5');
     texture.colorSpace = THREE.SRGBColorSpace;
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(2, 2);
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.repeat.set(1, 1);
     texture.anisotropy = maxAnisotropy;
     return texture;
   }

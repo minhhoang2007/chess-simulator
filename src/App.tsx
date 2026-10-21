@@ -498,7 +498,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#160f0a] text-[#f1f1f1] select-none font-sans">
+    <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#16171a] text-[#f1f1f1] select-none font-sans">
       {/* 3D Viewport: Fullscreen chill cafe wooden table & board (supports 2-finger touchpad pinch/scroll zoom) */}
       <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full cursor-pointer" />
 
