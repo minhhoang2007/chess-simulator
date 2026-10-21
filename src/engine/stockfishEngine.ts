@@ -134,9 +134,10 @@ class StockfishEngineService {
 
     const deliverWithHumanTempo = (res: BestMoveResult) => {
       const elapsed = performance.now() - startTime;
-      // 1.5x slower / more natural bot response tempo (~320-450ms instead of 190-260ms)
-      const targetMinDelay = 320 + Math.random() * 130;
-      const remaining = Math.max(50, targetMinDelay - elapsed);
+      // Bot response tempo slowed down by another 1.5x (~520ms - 720ms)
+      // Feels thoughtful, comfortable, natural human-like cafe tempo
+      const targetMinDelay = 520 + Math.random() * 200;
+      const remaining = Math.max(80, targetMinDelay - elapsed);
       window.setTimeout(() => onDone(res), remaining);
     };
 

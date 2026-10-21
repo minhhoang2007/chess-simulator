@@ -529,11 +529,11 @@ export class ChessScene {
     const endPos = this.squareToPosition(to);
     const dist = startPos.distanceTo(endPos);
     const startTime = performance.now();
-    // 1.5x slightly more deliberate, elegant glide speed so human eye can follow bot moving piece easily
-    // (~300ms - 420ms duration)
-    const baseDuration = dist < 0.6 ? 180 : Math.min(420, Math.max(300, 260 + dist * 22));
+    // Another 1.5x deliberate, smooth glide speed (~450ms - 620ms duration)
+    // Allows players to clearly watch and savor each move in a chill cafe pace
+    const baseDuration = dist < 0.6 ? 260 : Math.min(620, Math.max(450, 380 + dist * 32));
     const duration = baseDuration;
-    const arcHeight = dist < 0.6 ? 0.03 : Math.min(0.18, 0.08 + dist * 0.016);
+    const arcHeight = dist < 0.6 ? 0.04 : Math.min(0.22, 0.10 + dist * 0.022);
     const tempPos = new THREE.Vector3();
 
     const animStep = () => {
