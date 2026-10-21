@@ -53,6 +53,7 @@ export const App: React.FC = () => {
   // Drawers & Modals — Open BotSelectorModal immediately on page load!
   const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState<boolean>(false);
   const [isBotModalOpen, setIsBotModalOpen] = useState<boolean>(true);
+  const [hasGameStarted, setHasGameStarted] = useState<boolean>(false);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
   const [isResignConfirmOpen, setIsResignConfirmOpen] = useState<boolean>(false);
 
@@ -407,6 +408,7 @@ export const App: React.FC = () => {
     setCapturedPieces({ w: [], b: [] });
     setHintInfo(null);
 
+    setHasGameStarted(true);
     setIsBotModalOpen(false);
 
     if (newCol === 'b') {
@@ -498,10 +500,11 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#16171a] text-[#f1f1f1] select-none font-sans">
-      {/* 3D Viewport: Fullscreen chill cafe wooden table & board (supports 2-finger touchpad pinch/scroll zoom) */}
+    <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#161512] text-[#f1f1f1] select-none font-sans">
+      {/* 3D Viewport: Fullscreen board preview (slightly smaller mode) */}
       <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full cursor-pointer" />
 
+      {/* Main Chessboard HUD: Always available */}
       {/* ========================================================
           CHESS.COM CHECKMATE POPUP ON TOP-RIGHT OF CHECKMATED KING
           ======================================================== */}
@@ -670,7 +673,7 @@ export const App: React.FC = () => {
         onUpdateSettings={(newVals) => setSettings((s) => ({ ...s, ...newVals }))}
       />
 
-      {/* BOT SELECTOR MODAL (Opens on startup & when clicking Change Bot) */}
+      {/* BOT SELECTOR MODAL (Floating modal with preview board visible behind) */}
       <BotSelectorModal
         isOpen={isBotModalOpen}
         selectedBot={selectedBot}

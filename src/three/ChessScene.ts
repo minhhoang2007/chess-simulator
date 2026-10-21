@@ -55,8 +55,8 @@ export class ChessScene {
   // Orientation
   private isFlipped = false;
 
-  // Exact 0.40-pixel-accurate Camera Calibration solved directly from com.jetstartgames.chess 1080p screenshot
-  private readonly PHOTO_CAMERA_FOV = 26.05;
+  // Calibrated Camera Perspective (FOV 29.2 makes the board slightly smaller & sleeker on the stone table)
+  private readonly PHOTO_CAMERA_FOV = 29.2;
   private readonly PHOTO_CAMERA_POS = new THREE.Vector3(0, 13.74, 9.282);
   private readonly PHOTO_CAMERA_TARGET = new THREE.Vector3(0, 0.22, 0.592);
 
