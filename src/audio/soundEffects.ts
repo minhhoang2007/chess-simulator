@@ -138,6 +138,23 @@ class SoundSynthesizer {
     this.playSound('game-end');
   }
 
+  public playAryaCheckmate() {
+    if (!this.enabled) return;
+    this.initContext();
+
+    try {
+      const audio = new Audio('/sounds/arya_checkmate.m4a');
+      audio.volume = 0.95;
+      audio.play().catch(() => {
+        const fallback = new Audio('/sounds/arya_checkmate.wav');
+        fallback.volume = 0.95;
+        fallback.play().catch(() => {});
+      });
+    } catch {
+      // Audio fallback
+    }
+  }
+
   public playIllegal() {
     this.playSound('illegal');
   }

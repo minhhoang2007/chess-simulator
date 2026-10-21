@@ -63,9 +63,9 @@ export class ChessScene {
   constructor(container: HTMLElement) {
     this.container = container;
 
-    // 1. Scene
+    // 1. Scene with transparent background so the anime classroom backdrop shows through
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x16171a);
+    this.scene.background = null;
 
     // 2. Camera (exact perspective calibration of com.jetstartgames.chess)
     const aspect = container.clientWidth / container.clientHeight;
@@ -73,8 +73,12 @@ export class ChessScene {
     this.camera.position.copy(this.PHOTO_CAMERA_POS);
     this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
 
-    // 3. Renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    // 3. Renderer with alpha enabled for transparent background
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance'
+    });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
@@ -126,13 +130,13 @@ export class ChessScene {
   private setupTableAndBoard() {
     const maxAniso = this.renderer.capabilities.getMaxAnisotropy();
 
-    // 1. Authentic 1080p Wood Plank Table (unlit so original photo colors are preserved 1:1)
+    // 1. Authentic honed stone table framed within the anime classroom
     const tableTexture = TextureGenerator.createWoodTableTexture(maxAniso);
     const tableMat = new THREE.MeshBasicMaterial({
       map: tableTexture,
       toneMapped: false
     });
-    const tableGeo = new THREE.PlaneGeometry(28, 28);
+    const tableGeo = new THREE.PlaneGeometry(16.8, 16.8);
     this.tableMesh = new THREE.Mesh(tableGeo, tableMat);
     this.tableMesh.rotation.x = -Math.PI / 2;
     this.tableMesh.position.y = -0.22;

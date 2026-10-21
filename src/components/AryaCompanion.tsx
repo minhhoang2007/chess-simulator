@@ -64,7 +64,7 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
           {state === 'victory' && (
             <>
               <span className="text-sm">🎉</span>
-              <span>Yay! Checkmate!</span>
+              <span>Checkmate! Congratulations!</span>
             </>
           )}
           {state === 'defeat' && (

@@ -31,20 +31,50 @@
 @keyframes checkmatePop {
   0% {
     opacity: 0;
-    transform: translate(-15%, -85%) scale(0.45);
+    transform: translate(-50%, -85%) scale(0.65);
   }
   70% {
     opacity: 1;
-    transform: translate(-15%, -102%) scale(1.08);
+    transform: translate(-50%, -104%) scale(1.05);
   }
   100% {
     opacity: 1;
-    transform: translate(-15%, -96%) scale(1);
+    transform: translate(-50%, -100%) scale(1);
   }
 }
 
 .animate-checkmate-pop {
-  animation: checkmatePop 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+  animation: checkmatePop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+
+/* Roshidere Anime Sakura Petals Keyframes */
+@keyframes sakuraFall {
+  0% {
+    transform: translateY(-20px) translateX(0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(105vh) translateX(-85px);
+    opacity: 0;
+  }
+}
+
+@keyframes sakuraSway {
+  0% {
+    transform: rotate(0deg) rotateX(0deg) rotateY(0deg);
+  }
+  50% {
+    transform: rotate(45deg) rotateX(60deg) rotateY(40deg);
+  }
+  100% {
+    transform: rotate(90deg) rotateX(120deg) rotateY(80deg);
+  }
 }
 
 /* Custom Scrollbar */

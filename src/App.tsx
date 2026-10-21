@@ -7,10 +7,12 @@ import { ChessScene } from './three/ChessScene';
 import { stockfishEngine } from './engine/stockfishEngine';
 import { sounds } from './audio/soundEffects';
 import { BotSelectorModal } from './components/BotSelectorModal';
+import { GameOverModal } from './components/GameOverModal';
 import { PromotionModal } from './components/PromotionModal';
 import { MenuDrawer } from './components/MenuDrawer';
 import { AryaCompanion, AryaState } from './components/AryaCompanion';
-import { Menu, RotateCcw, Users, ZoomIn, ZoomOut } from 'lucide-react';
+import { SakuraOverlay } from './components/SakuraOverlay';
+import { Menu, RotateCcw, Users, ZoomIn, ZoomOut, Trophy } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Core Chess State
@@ -53,6 +55,7 @@ export const App: React.FC = () => {
   // Drawers & Modals — Open BotSelectorModal immediately on page load!
   const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState<boolean>(false);
   const [isBotModalOpen, setIsBotModalOpen] = useState<boolean>(true);
+  const [isGameOverModalOpen, setIsGameOverModalOpen] = useState<boolean>(false);
   const [hasGameStarted, setHasGameStarted] = useState<boolean>(false);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
   const [isResignConfirmOpen, setIsResignConfirmOpen] = useState<boolean>(false);
@@ -331,10 +334,11 @@ export const App: React.FC = () => {
     });
   }, [chess, selectedBot, playerColor, moveHistory.length]);
 
-  // 7. Checkmate & Game End (Chess.com Checkmate '#' Popup on King!)
+  // 7. Checkmate & Game End (Chess.com Checkmate '#' Popup on King & Modal)
   const checkGameEnd = () => {
     if (chess.isCheckmate()) {
       setIsGameOver(true);
+      setIsGameOverModalOpen(true);
       const loserColor = chess.turn();
       const win = loserColor === 'w' ? 'b' : 'w';
       setWinner(win);
@@ -348,10 +352,15 @@ export const App: React.FC = () => {
       }
 
       sounds.playVictory();
+      // Arya Anime Voice: "Checkmate! Congratulations!"
+      setTimeout(() => {
+        sounds.playAryaCheckmate();
+      }, 400);
+
       if (win === playerColor) {
         confetti({
-          particleCount: 85,
-          spread: 75,
+          particleCount: 95,
+          spread: 80,
           origin: { y: 0.6 }
         });
       }
@@ -360,21 +369,25 @@ export const App: React.FC = () => {
 
     if (chess.isStalemate()) {
       setIsGameOver(true);
+      setIsGameOverModalOpen(true);
       setWinner('draw');
       setGameOverReason('Stalemate');
       sounds.playVictory();
     } else if (chess.isThreefoldRepetition()) {
       setIsGameOver(true);
+      setIsGameOverModalOpen(true);
       setWinner('draw');
       setGameOverReason('Threefold Repetition');
       sounds.playVictory();
     } else if (chess.isInsufficientMaterial()) {
       setIsGameOver(true);
+      setIsGameOverModalOpen(true);
       setWinner('draw');
       setGameOverReason('Insufficient Material');
       sounds.playVictory();
     } else if (chess.isDraw()) {
       setIsGameOver(true);
+      setIsGameOverModalOpen(true);
       setWinner('draw');
       setGameOverReason('50-Move Rule');
       sounds.playVictory();
@@ -388,6 +401,7 @@ export const App: React.FC = () => {
     matedKingSquareRef.current = null;
     setMatedKingSquare(null);
     setMatedKingScreenPos(null);
+    setIsGameOverModalOpen(false);
 
     const newBot = bot || selectedBot;
     const newCol = col || playerColor;
@@ -479,6 +493,7 @@ export const App: React.FC = () => {
   const confirmResign = () => {
     setIsResignConfirmOpen(false);
     setIsGameOver(true);
+    setIsGameOverModalOpen(true);
     const win = playerColor === 'w' ? 'b' : 'w';
     setWinner(win);
     setGameOverReason('Resigned');
@@ -513,12 +528,25 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#161512] text-[#f1f1f1] select-none font-sans">
+      {/* 0. Roshidere (Alya Sometimes Hides Her Feelings in Russian) Anime Classroom Environment */}
+      <div
+        className="absolute inset-0 bg-cover bg-center filter brightness-[0.96] contrast-[1.03]"
+        style={{ backgroundImage: `url('/textures/alya_classroom_bg.jpg')` }}
+      >
+        {/* Soft sunlight beams & warm vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-black/25 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/35 via-transparent to-black/25 pointer-events-none" />
+      </div>
+
+      {/* Floating Sakura Cherry Blossom Petals */}
+      <SakuraOverlay />
+
       {/* 3D Viewport: Fullscreen board preview (slightly smaller mode) */}
-      <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full cursor-pointer" />
+      <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full cursor-pointer z-10" />
 
       {/* Main Chessboard HUD: Always available */}
       {/* ========================================================
-          CHESS.COM CHECKMATE POPUP ON TOP-RIGHT OF CHECKMATED KING
+          CHESS.COM ON-BOARD CHECKMATE SPEECH CALLOUT
           ======================================================== */}
       {isGameOver && matedKingSquare && matedKingScreenPos && (
         <div
@@ -526,22 +554,22 @@ export const App: React.FC = () => {
             left: `${matedKingScreenPos.x}px`,
             top: `${matedKingScreenPos.y}px`
           }}
-          className="fixed z-30 pointer-events-none animate-checkmate-pop flex items-center gap-2"
+          className="fixed z-30 pointer-events-auto flex flex-col items-center animate-checkmate-pop cursor-pointer"
+          onClick={() => setIsGameOverModalOpen(true)}
+          title="Click to view Game Over details"
         >
-          {/* Iconic Chess.com Red Checkmate '#' Circle Badge right on the King's top-right corner */}
-          <div className="w-8 h-8 rounded-full bg-[#e53935] border-2 border-white shadow-[0_4px_14px_rgba(229,57,53,0.75)] flex items-center justify-center text-white font-black text-base leading-none shrink-0">
-            #
-          </div>
-
-          {/* Clean Chess.com Checkmate Callout Pill */}
-          <div className="px-3 py-1.5 rounded-lg bg-[#262421]/95 border border-white/15 shadow-[0_8px_24px_rgba(0,0,0,0.65)] backdrop-blur-md flex items-center gap-2 whitespace-nowrap">
-            <span className="text-xs font-extrabold tracking-tight text-white">
-              Checkmate
-            </span>
-            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-[#e53935]/20 text-[#ff8a80]">
+          {/* Authentic Chess.com Red Checkmate Speech Badge */}
+          <div className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#b32b28] via-[#ca3431] to-[#b32b28] border border-white/35 shadow-[0_8px_24px_rgba(202,52,49,0.7),0_2px_8px_rgba(0,0,0,0.6)] flex items-center gap-2 text-white">
+            <div className="w-5 h-5 rounded-full bg-white/25 border border-white/40 flex items-center justify-center font-black text-xs leading-none">
+              #
+            </div>
+            <span className="text-xs font-black tracking-wider uppercase drop-shadow-xs">Checkmate</span>
+            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-black/25 text-white/95">
               {winner === 'w' ? '1-0' : '0-1'}
             </span>
           </div>
+          {/* Speech Bubble Arrow pointing straight down at King */}
+          <div className="w-0 h-0 border-x-[6px] border-x-transparent border-t-[7px] border-t-[#ca3431] -mt-[0.5px] drop-shadow-sm" />
         </div>
       )}
 
@@ -684,6 +712,35 @@ export const App: React.FC = () => {
         onResign={handleResign}
         onUpdateSettings={(newVals) => setSettings((s) => ({ ...s, ...newVals }))}
       />
+
+      {/* CHESS.COM GAME OVER MODAL */}
+      <GameOverModal
+        isOpen={isGameOverModalOpen}
+        winner={winner}
+        reason={gameOverReason}
+        playerColor={playerColor}
+        selectedBot={selectedBot}
+        moveCount={Math.floor(moveHistory.length / 2)}
+        onRematch={() => handleStartGame(selectedBot, playerColor, timeControl)}
+        onSelectBot={() => {
+          setIsGameOverModalOpen(false);
+          setIsBotModalOpen(true);
+        }}
+        onClose={() => setIsGameOverModalOpen(false)}
+      />
+
+      {/* Floating Re-Open Details Pill when modal is dismissed */}
+      {isGameOver && !isGameOverModalOpen && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
+          <button
+            onClick={() => setIsGameOverModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-[#262421]/95 hover:bg-[#312e2b] border border-white/18 text-white font-bold text-xs flex items-center gap-2 shadow-[0_8px_24px_rgba(0,0,0,0.7)] backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+          >
+            <Trophy className="w-4 h-4 text-[#ffd54f]" />
+            <span>Game Over • View Details</span>
+          </button>
+        </div>
+      )}
 
       {/* BOT SELECTOR MODAL (Floating modal with preview board visible behind) */}
       <BotSelectorModal
