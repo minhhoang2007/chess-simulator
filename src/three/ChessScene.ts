@@ -44,10 +44,14 @@ export class ChessScene {
 
   // Orientation
   private isFlipped = false;
+  private cameraMode: 'photo' | 'topdown' | 'free3d' = 'photo';
 
   // Camera Perspective matching the reference photo's exact framing and trapezoid angle
   private readonly PHOTO_CAMERA_POS = new THREE.Vector3(0, 10.9, 5.15);
   private readonly PHOTO_CAMERA_TARGET = new THREE.Vector3(0, -0.1, 0.22);
+
+  // Uniform oblique tilt factor (matches the crisp ~30° oblique view of pieces in the reference photo)
+  private readonly OBLIQUE_TILT = 0.44;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -69,7 +73,7 @@ export class ChessScene {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.04;
     container.appendChild(this.renderer.domElement);
 
     this.contactShadowTex = TextureGenerator.createContactShadowTexture();
@@ -92,13 +96,13 @@ export class ChessScene {
   }
 
   private setupLighting() {
-    // Balanced warm ambient light so the photographic wood texture looks natural
-    const ambientLight = new THREE.AmbientLight(0xfff9f0, 1.35);
+    // Warm balanced studio ambient light so vertex-shaded pieces & wood board stay crisp
+    const ambientLight = new THREE.AmbientLight(0xfffcf6, 1.75);
     this.scene.add(ambientLight);
 
-    // Main directional key light from front-right-top (casts shadows back-left like the photo)
-    const keyLight = new THREE.DirectionalLight(0xfffaf0, 1.85);
-    keyLight.position.set(3.2, 12.5, 5.5);
+    // Key light from top-left-front matching the top-left specular highlight in the reference photo
+    const keyLight = new THREE.DirectionalLight(0xfffaf2, 1.25);
+    keyLight.position.set(-3.2, 12.5, 4.8);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 2048;
     keyLight.shadow.mapSize.height = 2048;
@@ -111,11 +115,6 @@ export class ChessScene {
     keyLight.shadow.bias = -0.0004;
     keyLight.shadow.radius = 2.5;
     this.scene.add(keyLight);
-
-    // Subtle rim light from top-left for glossy collar highlights on black pieces
-    const rimLight = new THREE.DirectionalLight(0xe2eeff, 0.9);
-    rimLight.position.set(-5.0, 9.0, -4.0);
-    this.scene.add(rimLight);
 
     try {
       const studioEnv = TextureGenerator.createStudioEnvironment(this.renderer);
@@ -132,9 +131,9 @@ export class ChessScene {
     const tableTexture = TextureGenerator.createWoodTableTexture(maxAniso);
     const tableMat = new THREE.MeshStandardMaterial({
       map: tableTexture,
-      roughness: 0.82,
-      metalness: 0.04,
-      envMapIntensity: 0.25
+      roughness: 0.85,
+      metalness: 0.02,
+      envMapIntensity: 0.15
     });
     const tableGeo = new THREE.PlaneGeometry(28, 28);
     this.tableMesh = new THREE.Mesh(tableGeo, tableMat);
@@ -155,7 +154,6 @@ export class ChessScene {
     }
 
     const maxAniso = this.renderer.capabilities.getMaxAnisotropy();
-    // 8.0 units for 64 squares + border (84px on each side out of 2048px -> 8.0 * 2048 / 1880 = 8.715)
     const boardWidth = 8.715;
     const boardThickness = 0.44;
     const boardGeo = new THREE.BoxGeometry(boardWidth, boardThickness, boardWidth);
@@ -163,16 +161,15 @@ export class ChessScene {
     const topTexture = TextureGenerator.createChessboardTexture(this.boardTheme, this.showCoordinates, maxAniso);
     const topMat = new THREE.MeshStandardMaterial({
       map: topTexture,
-      roughness: 0.42,
+      roughness: 0.55,
       metalness: 0.02,
-      envMapIntensity: 0.35
+      envMapIntensity: 0.2
     });
 
-    // Dark walnut front/side bezel matching the bottom edge of the board in the photo
     const sideMat = new THREE.MeshStandardMaterial({
       color: 0x2c1b10,
-      roughness: 0.55,
-      metalness: 0.05
+      roughness: 0.6,
+      metalness: 0.04
     });
 
     const bottomMat = new THREE.MeshStandardMaterial({ color: 0x120a06, roughness: 0.9 });
@@ -191,14 +188,12 @@ export class ChessScene {
 
     switch (this.pieceTheme) {
       case 'classic-wood': {
-        // Uses the multi-band Vertex Colors baked into StauntonGeometryFactory!
-        return new THREE.MeshPhysicalMaterial({
+        // Preserves the high-contrast studio shading baked into StauntonGeometryFactory
+        return new THREE.MeshStandardMaterial({
           vertexColors: true,
-          roughness: isWhite ? 0.22 : 0.18,
-          metalness: isWhite ? 0.03 : 0.06,
-          clearcoat: 0.75,
-          clearcoatRoughness: 0.14,
-          envMapIntensity: 1.15
+          roughness: isWhite ? 0.34 : 0.26,
+          metalness: isWhite ? 0.02 : 0.05,
+          envMapIntensity: 0.28
         });
       }
 
@@ -259,6 +254,33 @@ export class ChessScene {
         });
       }
     }
+  }
+
+  /**
+   * Updates the piece's position and applies a perspective-compensating oblique shear
+   * so that every piece across all 64 squares exhibits the exact same ~30° oblique view
+   * and zero horizontal leaning, matching the reference image.
+   */
+  private setPiecePosition(mesh: THREE.Mesh, pos: THREE.Vector3) {
+    mesh.position.copy(pos);
+
+    const visualMesh = mesh.userData.visualMesh as THREE.Mesh | undefined;
+    if (!visualMesh) return;
+
+    const H = Math.max(4.0, this.camera.position.y - 0.22);
+    const tilt = this.cameraMode === 'topdown' ? 0.18 : this.OBLIQUE_TILT;
+
+    // Cancel camera perspective spread (-pos.x / H, (cam.z - pos.z) / H) and apply uniform oblique tilt (-tilt)
+    const sx = -pos.x / H;
+    const sz = (this.camera.position.z - pos.z) / H - tilt;
+
+    visualMesh.matrix.set(
+      1, sx, 0, 0,
+      0,  1, 0, 0,
+      0, sz, 1, 0,
+      0,  0, 0, 1
+    );
+    visualMesh.matrixWorldNeedsUpdate = true;
   }
 
   // --- SQUARE / POSITION MAPPING ---
@@ -322,7 +344,7 @@ export class ChessScene {
             }
             this.createPieceMesh(square, piece.type, piece.color);
           } else {
-            existingMesh.position.copy(this.squareToPosition(square));
+            this.setPiecePosition(existingMesh, this.squareToPosition(square));
           }
         }
       }
@@ -342,30 +364,37 @@ export class ChessScene {
     const geom = StauntonGeometryFactory.getGeometry(type, color);
     const mat = this.createPieceMaterial(color);
 
-    const mesh = new THREE.Mesh(geom, mat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    mesh.userData = { square, type, color };
+    // Root container mesh for positioning & shadow
+    const rootMesh = new THREE.Mesh(new THREE.BufferGeometry(), mat);
 
-    // Add soft ambient occlusion contact shadow disc under the piece base
+    // Visual 3D piece mesh with oblique shear matrix
+    const visualMesh = new THREE.Mesh(geom, mat);
+    visualMesh.castShadow = false;
+    visualMesh.receiveShadow = false;
+    visualMesh.matrixAutoUpdate = false;
+    rootMesh.add(visualMesh);
+
+    // Tight, crisp contact shadow directly under the piece base (shifted slightly left like the photo)
+    const shadowSize = type === 'p' ? 0.68 : 0.78;
     const shadowPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.92, 0.92),
+      new THREE.PlaneGeometry(shadowSize, shadowSize),
       new THREE.MeshBasicMaterial({
         map: this.contactShadowTex,
         transparent: true,
         depthWrite: false,
-        opacity: 0.85
+        opacity: 0.9
       })
     );
     shadowPlane.rotation.x = -Math.PI / 2;
-    shadowPlane.position.set(-0.05, 0.004, -0.05);
-    mesh.add(shadowPlane);
+    shadowPlane.position.set(-0.045, 0.004, 0.08);
+    rootMesh.add(shadowPlane);
 
-    mesh.position.copy(this.squareToPosition(square));
+    rootMesh.userData = { square, type, color, visualMesh };
+    this.setPiecePosition(rootMesh, this.squareToPosition(square));
 
-    this.scene.add(mesh);
-    this.piecesMap.set(square, mesh);
-    return mesh;
+    this.scene.add(rootMesh);
+    this.piecesMap.set(square, rootMesh);
+    return rootMesh;
   }
 
   // --- ANIMATED PIECE MOVE ---
@@ -390,20 +419,22 @@ export class ChessScene {
     const endPos = this.squareToPosition(to);
     const startTime = performance.now();
     const duration = 240;
+    const tempPos = new THREE.Vector3();
 
     const animStep = () => {
       const elapsed = performance.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const ease = progress * progress * (3 - 2 * progress);
 
-      mesh.position.x = THREE.MathUtils.lerp(startPos.x, endPos.x, ease);
-      mesh.position.z = THREE.MathUtils.lerp(startPos.z, endPos.z, ease);
-      mesh.position.y = startPos.y + Math.sin(progress * Math.PI) * 0.45;
+      tempPos.x = THREE.MathUtils.lerp(startPos.x, endPos.x, ease);
+      tempPos.z = THREE.MathUtils.lerp(startPos.z, endPos.z, ease);
+      tempPos.y = startPos.y + Math.sin(progress * Math.PI) * 0.4;
+      this.setPiecePosition(mesh, tempPos);
 
       if (progress < 1) {
         requestAnimationFrame(animStep);
       } else {
-        mesh.position.copy(endPos);
+        this.setPiecePosition(mesh, endPos);
         if (onFinish) onFinish();
       }
     };
@@ -566,7 +597,11 @@ export class ChessScene {
 
     this.buildBoard();
     for (const mesh of this.piecesMap.values()) {
-      mesh.material = this.createPieceMaterial(mesh.userData.color);
+      const mat = this.createPieceMaterial(mesh.userData.color);
+      mesh.material = mat;
+      if (mesh.userData.visualMesh) {
+        (mesh.userData.visualMesh as THREE.Mesh).material = mat;
+      }
     }
     this.refreshHighlights();
   }
@@ -575,13 +610,14 @@ export class ChessScene {
   public flipBoard(isFlipped: boolean) {
     this.isFlipped = isFlipped;
     for (const [sq, mesh] of this.piecesMap.entries()) {
-      mesh.position.copy(this.squareToPosition(sq));
+      this.setPiecePosition(mesh, this.squareToPosition(sq));
     }
     this.refreshHighlights();
   }
 
   // --- CAMERA MODES ---
   public setCameraMode(mode: 'photo' | 'topdown' | 'free3d') {
+    this.cameraMode = mode;
     if (mode === 'photo') {
       this.camera.position.copy(this.PHOTO_CAMERA_POS);
       this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
@@ -591,6 +627,9 @@ export class ChessScene {
     } else {
       this.camera.position.copy(this.PHOTO_CAMERA_POS);
       this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
+    }
+    for (const [sq, mesh] of this.piecesMap.entries()) {
+      this.setPiecePosition(mesh, this.squareToPosition(sq));
     }
   }
 
@@ -639,9 +678,10 @@ export class ChessScene {
       if (this.isDragging && this.draggedMesh) {
         const boardIntersect = this.getBoardIntersect(e);
         if (boardIntersect) {
-          this.draggedMesh.position.x = boardIntersect.x;
-          this.draggedMesh.position.z = boardIntersect.z;
-          this.draggedMesh.position.y = 0.65;
+          this.setPiecePosition(
+            this.draggedMesh,
+            new THREE.Vector3(boardIntersect.x, 0.55, boardIntersect.z)
+          );
         }
       }
     });
@@ -661,13 +701,13 @@ export class ChessScene {
             this.onMoveCallback(from, dropSquare);
           }
         } else {
-          this.draggedMesh.position.copy(this.dragStartPosition);
+          this.setPiecePosition(this.draggedMesh, this.dragStartPosition);
           this.draggedMesh = null;
           this.dragStartSquare = null;
         }
       } else {
         if (this.draggedMesh) {
-          this.draggedMesh.position.copy(this.dragStartPosition);
+          this.setPiecePosition(this.draggedMesh, this.dragStartPosition);
           this.draggedMesh = null;
           this.dragStartSquare = null;
         }
