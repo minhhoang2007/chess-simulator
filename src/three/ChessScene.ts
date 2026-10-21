@@ -372,63 +372,70 @@ export class ChessScene {
   }
 
   /**
-   * Ultra-fast cascaded setup animation ("sắp lần lượt các quân nhưng cực nhanh")
-   * Total duration ~450ms. Pieces drop onto the board with a slight snappy bounce.
+   * Ultra-fast synchronized serpentine setup animation ("các quân trắng đen đồng thời"):
+   * White sequence:
+   *   Rank 1 from left rook (a1) to right rook (h1): a1 -> b1 -> c1 -> d1 -> e1 -> f1 -> g1 -> h1
+   *   Rank 2 pawns from right rook column (h2) back to left (a2): h2 -> g2 -> f2 -> e2 -> d2 -> c2 -> b2 -> a2
+   * Black sequence (simultaneously with White, starting at left rook in line with White's starting rook a8):
+   *   Rank 8: a8 -> b8 -> c8 -> d8 -> e8 -> f8 -> g8 -> h8
+   *   Rank 7 pawns: h7 -> g7 -> f7 -> e7 -> d7 -> c7 -> b7 -> a7
    */
   public animateBoardSetup(game: Chess, onFinish?: () => void) {
     this.clearBoard();
 
-    const currentBoard = game.board();
-    const piecesToSpawn: { square: Square; type: PieceSymbol; color: Color; rankIdx: number; fileIdx: number }[] = [];
+    // 16 synchronous steps for 16 pairs (White & Black placed together)
+    const whiteOrder: Square[] = [
+      'a1', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1',
+      'h2', 'g2', 'f2', 'e2', 'd2', 'c2', 'b2', 'a2'
+    ];
+    const blackOrder: Square[] = [
+      'a8', 'b8', 'c8', 'd8', 'e8', 'f8', 'g8', 'h8',
+      'h7', 'g7', 'f7', 'e7', 'd7', 'c7', 'b7', 'a7'
+    ];
 
-    // Collect all pieces to setup
+    const currentBoard = game.board();
+    const boardPieceMap = new Map<Square, { type: PieceSymbol; color: Color }>();
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const p = currentBoard[r][c];
         if (p) {
-          piecesToSpawn.push({
-            square: p.square,
-            type: p.type,
-            color: p.color,
-            rankIdx: r,
-            fileIdx: c
-          });
+          boardPieceMap.set(p.square, { type: p.type, color: p.color });
         }
       }
     }
 
-    // Sort order: Back ranks first (Black back rank, White back rank), then pawns (Black pawns, White pawns)
-    // or rank by rank from outside inward so it looks like an authentic tournament setup
-    // Rank 8 & Rank 1 (royals/officers), then Rank 7 & Rank 2 (pawns)
-    piecesToSpawn.sort((a, b) => {
-      const getPriority = (rankIdx: number) => {
-        if (rankIdx === 0 || rankIdx === 7) return 0; // Back rank officers
-        return 1; // Pawns
-      };
-      const prioDiff = getPriority(a.rankIdx) - getPriority(b.rankIdx);
-      if (prioDiff !== 0) return prioDiff;
-      // Along the rank, sort symmetrically from outside (rooks -> knights -> bishops -> royalty)
-      const distFromCenterA = Math.abs(a.fileIdx - 3.5);
-      const distFromCenterB = Math.abs(b.fileIdx - 3.5);
-      return distFromCenterB - distFromCenterA;
-    });
+    const totalSteps = whiteOrder.length; // 16 steps
+    let finishedSteps = 0;
+    const stepIntervalMs = 24; // Extremely snappy ~24ms between pairs (~384ms total wave)
+    const dropDurationMs = 135; // Snappy drop duration
 
-    const totalPieces = piecesToSpawn.length;
-    let placedCount = 0;
-    const staggerIntervalMs = 11; // Extremely fast stagger (~11ms between each piece spawn)
-    const dropDurationMs = 120; // Fast snappy drop duration
+    for (let i = 0; i < totalSteps; i++) {
+      const wSq = whiteOrder[i];
+      const bSq = blackOrder[i];
+      const wPiece = boardPieceMap.get(wSq);
+      const bPiece = boardPieceMap.get(bSq);
 
-    piecesToSpawn.forEach((item, index) => {
       setTimeout(() => {
-        const mesh = this.createPieceMesh(item.square, item.type, item.color);
-        const targetPos = this.squareToPosition(item.square);
-        const dropHeight = 1.35; // Drops from 1.35 units above the board
+        const spawnedMeshes: { mesh: THREE.Mesh; targetPos: THREE.Vector3 }[] = [];
 
-        // Spawn high and transparent/scaled if needed
-        mesh.position.set(targetPos.x, targetPos.y + dropHeight, targetPos.z);
-        if (mesh.userData.shadowMesh) {
-          mesh.userData.shadowMesh.position.set(targetPos.x, 0.221, targetPos.z);
-          mesh.userData.shadowMesh.scale.set(0.3, 0.3, 0.3);
+        if (wPiece) {
+          const mesh = this.createPieceMesh(wSq, wPiece.type, wPiece.color);
+          const targetPos = this.squareToPosition(wSq);
+          spawnedMeshes.push({ mesh, targetPos });
+        }
+        if (bPiece) {
+          const mesh = this.createPieceMesh(bSq, bPiece.type, bPiece.color);
+          const targetPos = this.squareToPosition(bSq);
+          spawnedMeshes.push({ mesh, targetPos });
+        }
+
+        const dropHeight = 1.4;
+        for (const item of spawnedMeshes) {
+          item.mesh.position.set(item.targetPos.x, item.targetPos.y + dropHeight, item.targetPos.z);
+          if (item.mesh.userData.shadowMesh) {
+            item.mesh.userData.shadowMesh.position.set(item.targetPos.x, 0.221, item.targetPos.z);
+            item.mesh.userData.shadowMesh.scale.set(0.25, 0.25, 0.25);
+          }
         }
 
         const startTime = performance.now();
@@ -437,33 +444,36 @@ export class ChessScene {
           const progress = Math.min(elapsed / dropDurationMs, 1);
 
           // Snappy overshoot bounce easing: starts fast, lands, tiny micro-bounce
-          // EaseOutBack-style bounce
           const c1 = 1.4;
           const c3 = c1 + 1;
           const p = 1 - progress;
           const easeBounce = 1 - (p * p * (c3 * p - c1));
 
-          const curY = targetPos.y + dropHeight * (1 - Math.min(1.08, easeBounce));
-          this.setPiecePosition(mesh, new THREE.Vector3(targetPos.x, curY, targetPos.z));
+          for (const item of spawnedMeshes) {
+            const curY = item.targetPos.y + dropHeight * (1 - Math.min(1.08, easeBounce));
+            this.setPiecePosition(item.mesh, new THREE.Vector3(item.targetPos.x, curY, item.targetPos.z));
 
-          if (mesh.userData.shadowMesh) {
-            const shadowScale = 0.3 + 0.7 * Math.min(1, easeBounce);
-            mesh.userData.shadowMesh.scale.set(shadowScale, shadowScale, shadowScale);
+            if (item.mesh.userData.shadowMesh) {
+              const shadowScale = 0.25 + 0.75 * Math.min(1, easeBounce);
+              item.mesh.userData.shadowMesh.scale.set(shadowScale, shadowScale, shadowScale);
+            }
           }
 
           if (progress < 1) {
             requestAnimationFrame(animStep);
           } else {
-            this.setPiecePosition(mesh, targetPos);
-            placedCount++;
-            if (placedCount >= totalPieces && onFinish) {
+            for (const item of spawnedMeshes) {
+              this.setPiecePosition(item.mesh, item.targetPos);
+            }
+            finishedSteps++;
+            if (finishedSteps >= totalSteps && onFinish) {
               onFinish();
             }
           }
         };
         requestAnimationFrame(animStep);
-      }, index * staggerIntervalMs);
-    });
+      }, i * stepIntervalMs);
+    }
   }
 
   private createPieceMesh(square: Square, type: PieceSymbol, color: Color): THREE.Mesh {
