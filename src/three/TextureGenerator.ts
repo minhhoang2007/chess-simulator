@@ -32,7 +32,7 @@ export class TextureGenerator {
       return this.pieceSpriteCache.get(spriteName)!;
     }
 
-    const texture = this.loader.load(`/textures/pieces/${spriteName}.png?v=3`);
+    const texture = this.loader.load(`/textures/pieces/${spriteName}.png?v=4`);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
     texture.magFilter = THREE.LinearFilter;

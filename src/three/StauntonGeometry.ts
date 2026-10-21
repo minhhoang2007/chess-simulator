@@ -220,16 +220,16 @@ export class StauntonGeometryFactory {
           finial: new THREE.Color(0x744d2f)
         }
       : {
-          base: new THREE.Color(0x222226),
-          baseRim: new THREE.Color(0x52525a),
-          stem: new THREE.Color(0x18181c),
-          groove: new THREE.Color(0x070709),
-          collar: new THREE.Color(0xf2f2f7),
-          head: new THREE.Color(0x242429),
-          crownTop: new THREE.Color(0x4a4a52),
-          knightBody: new THREE.Color(0x202025),
-          knightMane: new THREE.Color(0x686872),
-          finial: new THREE.Color(0x9a9aa4)
+          base: new THREE.Color(0x3a404d),
+          baseRim: new THREE.Color(0x6e778a),
+          stem: new THREE.Color(0x333844),
+          groove: new THREE.Color(0x1e2128),
+          collar: new THREE.Color(0xd5dce8),
+          head: new THREE.Color(0x3e4554),
+          crownTop: new THREE.Color(0x687185),
+          knightBody: new THREE.Color(0x3b4150),
+          knightMane: new THREE.Color(0x8892a6),
+          finial: new THREE.Color(0xb0b8c9)
         };
   }
 
@@ -446,7 +446,7 @@ export class StauntonGeometryFactory {
     });
   }
 
-  // --- 5. QUEEN (Compact height 0.76, coronet with 8 crown pearls) ---
+  // --- 5. QUEEN (Taller regal height 0.86, coronet with 8 crown pearls) ---
   private static createQueen(color: Color): THREE.BufferGeometry {
     const p = this.getPalette(color);
     const pts: THREE.Vector2[] = [
@@ -456,22 +456,22 @@ export class StauntonGeometryFactory {
       new THREE.Vector2(0.27, 0.075),
       new THREE.Vector2(0.28, 0.11),
       new THREE.Vector2(0.235, 0.155),
-      // Stem
-      new THREE.Vector2(0.145, 0.25),
-      new THREE.Vector2(0.125, 0.38),
+      // Elongated graceful stem
+      new THREE.Vector2(0.15, 0.27),
+      new THREE.Vector2(0.13, 0.45),
       // Collar
-      new THREE.Vector2(0.195, 0.415),
-      new THREE.Vector2(0.195, 0.455),
-      new THREE.Vector2(0.15, 0.48),
+      new THREE.Vector2(0.20, 0.49),
+      new THREE.Vector2(0.20, 0.53),
+      new THREE.Vector2(0.155, 0.555),
       // Coronet cup flared wider for clearer crown points
-      new THREE.Vector2(0.205, 0.56),
-      new THREE.Vector2(0.235, 0.64),
-      new THREE.Vector2(0.175, 0.605),
+      new THREE.Vector2(0.21, 0.64),
+      new THREE.Vector2(0.24, 0.72),
+      new THREE.Vector2(0.175, 0.685),
       // Flatter, less bulbous inner dome
-      new THREE.Vector2(0.125, 0.61),
-      new THREE.Vector2(0.095, 0.655),
-      new THREE.Vector2(0.035, 0.678),
-      new THREE.Vector2(0, 0.684)
+      new THREE.Vector2(0.125, 0.69),
+      new THREE.Vector2(0.095, 0.735),
+      new THREE.Vector2(0.035, 0.758),
+      new THREE.Vector2(0, 0.764)
     ];
 
     const baseLathe = this.colorizeLathe(new THREE.LatheGeometry(pts, 36), color, (y) => {
@@ -479,55 +479,55 @@ export class StauntonGeometryFactory {
       if (y < 0.08) return { color: p.base };
       if (y < 0.12) return { color: p.baseRim };
       if (y < 0.165) return { color: p.base };
-      if (y < 0.39) return { color: p.stem, isStem: true };
-      if (y < 0.41) return { color: p.groove, isGroove: true };
-      if (y < 0.46) return { color: p.collar, isCollar: true };
+      if (y < 0.46) return { color: p.stem, isStem: true };
       if (y < 0.485) return { color: p.groove, isGroove: true };
-      if (y < 0.642) return { color: p.crownTop, isCrownTop: true };
+      if (y < 0.535) return { color: p.collar, isCollar: true };
+      if (y < 0.56) return { color: p.groove, isGroove: true };
+      if (y < 0.722) return { color: p.crownTop, isCrownTop: true };
       return { color: p.head };
     });
 
     const parts: THREE.BufferGeometry[] = [baseLathe];
     const numPearls = 8;
-    const rimRadius = 0.215;
+    const rimRadius = 0.22;
     for (let i = 0; i < numPearls; i++) {
       const angle = (i / numPearls) * Math.PI * 2;
       const pearl = new THREE.SphereGeometry(0.038, 12, 12);
-      pearl.translate(Math.cos(angle) * rimRadius, 0.655, Math.sin(angle) * rimRadius);
+      pearl.translate(Math.cos(angle) * rimRadius, 0.735, Math.sin(angle) * rimRadius);
       parts.push(this.colorizeMesh(pearl, p.collar, color, { isCollar: true }));
     }
 
     const topPearl = new THREE.SphereGeometry(0.028, 14, 14);
-    topPearl.translate(0, 0.695, 0);
+    topPearl.translate(0, 0.775, 0);
     parts.push(this.colorizeMesh(topPearl, p.collar, color, { isCollar: true }));
 
     return this.mergeGeometries(parts);
   }
 
-  // --- 6. KING (Compact height 0.84, double white collar & bronze/silver finial) ---
+  // --- 6. KING (Robust, broad-shouldered height 0.90) ---
   private static createKing(color: Color): THREE.BufferGeometry {
     const p = this.getPalette(color);
     const pts: THREE.Vector2[] = [
       new THREE.Vector2(0, 0),
-      new THREE.Vector2(0.305, 0),
-      new THREE.Vector2(0.305, 0.04),
-      new THREE.Vector2(0.275, 0.08),
-      new THREE.Vector2(0.285, 0.115),
-      new THREE.Vector2(0.24, 0.16),
-      // Stem
-      new THREE.Vector2(0.15, 0.27),
-      new THREE.Vector2(0.13, 0.41),
-      // Double Collar
-      new THREE.Vector2(0.205, 0.445),
-      new THREE.Vector2(0.21, 0.485),
-      new THREE.Vector2(0.155, 0.51),
-      new THREE.Vector2(0.185, 0.535),
-      new THREE.Vector2(0.145, 0.56),
-      // Royal Crown
-      new THREE.Vector2(0.21, 0.67),
-      new THREE.Vector2(0.215, 0.72),
-      new THREE.Vector2(0.145, 0.74),
-      new THREE.Vector2(0.07, 0.76),
+      new THREE.Vector2(0.31, 0),
+      new THREE.Vector2(0.31, 0.04),
+      new THREE.Vector2(0.28, 0.08),
+      new THREE.Vector2(0.29, 0.115),
+      new THREE.Vector2(0.25, 0.16),
+      // Thicker, broader stem
+      new THREE.Vector2(0.185, 0.27),
+      new THREE.Vector2(0.168, 0.41),
+      // Broad Double Collar
+      new THREE.Vector2(0.24, 0.445),
+      new THREE.Vector2(0.245, 0.485),
+      new THREE.Vector2(0.19, 0.51),
+      new THREE.Vector2(0.22, 0.535),
+      new THREE.Vector2(0.18, 0.56),
+      // Broad Royal Crown
+      new THREE.Vector2(0.25, 0.67),
+      new THREE.Vector2(0.255, 0.72),
+      new THREE.Vector2(0.175, 0.74),
+      new THREE.Vector2(0.085, 0.76),
       new THREE.Vector2(0, 0.77)
     ];
 
