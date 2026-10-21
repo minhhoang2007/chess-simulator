@@ -1,307 +1,261 @@
 import { BotProfile, Language } from '../types/chess';
 
-export const BOT_PROFILES: BotProfile[] = [
+export const CHESS_COM_BOTS: BotProfile[] = [
   {
-    id: 'bot_600',
+    id: 'jimmy',
+    name: 'Jimmy',
     elo: 600,
-    name: {
-      vi: 'Bé Tập Chơi (Tí)',
-      en: 'Pawn Cadet (Tim)'
-    },
-    title: {
-      vi: 'Tân Thủ Cờ Vua',
-      en: 'Chess Beginner'
+    category: 'beginner',
+    avatar: '🧒',
+    avatarBg: '#3b82f6',
+    personalityTag: 'Beginner',
+    quote: {
+      vi: 'Chào bạn! Mình mới tập chơi cờ vua, cùng chơi vui vẻ nhé!',
+      en: "Hi! I'm learning chess. Let's play a fun game!"
     },
     description: {
-      vi: 'Vừa học xong luật cờ vua hôm qua. Hay đi sót quân và chưa biết phòng thủ.',
-      en: 'Just learned the rules yesterday. Often leaves pieces hanging and ignores defense.'
+      vi: 'Jimmy là bot tân thủ của Chess.com. Cậu bé thích phát triển quân nhưng thường xuyên để sót quân và chưa biết phòng thủ.',
+      en: 'Jimmy is the friendly chess.com beginner bot. He likes moving pieces out but frequently makes simple oversights.'
     },
-    avatar: '🧒',
     skillLevel: 0,
     depth: 2,
-    blunderRate: 0.35,
-    personality: {
-      vi: 'Ủa sao con Hậu lại đi chéo được vậy ta?',
-      en: 'Wait, does the Queen move diagonally like that?'
-    }
+    blunderRate: 0.35
   },
   {
-    id: 'bot_900',
-    elo: 900,
-    name: {
-      vi: 'Kỳ Thủ Trường Học (Huy)',
-      en: 'School Champion (Leo)'
-    },
-    title: {
-      vi: 'Học Viên Tập Sự',
-      en: 'Apprentice Player'
+    id: 'zara',
+    name: 'Zara',
+    elo: 850,
+    category: 'beginner',
+    avatar: '👧',
+    avatarBg: '#ec4899',
+    personalityTag: 'Attacker',
+    quote: {
+      vi: 'Mình thích lao lên tấn công và ăn quân đối thủ!',
+      en: 'I love pushing forward and attacking your pieces!'
     },
     description: {
-      vi: 'Đã biết bắt quân có lợi và nhập thành, nhưng hay dính các đòn chiến thuật cơ bản.',
-      en: 'Understands material trade and castling, but still vulnerable to simple tactics.'
+      vi: 'Zara là bot cấp độ nhập môn năng nổ. Cô bé luôn tìm cách ăn quân và dâng tốt tấn công cánh vua.',
+      en: 'Zara plays aggressive beginner chess, actively looking for trades and pawn storms.'
     },
-    avatar: '👦',
     skillLevel: 3,
     depth: 4,
-    blunderRate: 0.2,
-    personality: {
-      vi: 'Tôi vừa học đòn bắt đôi mã, cẩn thận nhé!',
-      en: 'I just practiced knight forks, watch your pieces!'
-    }
+    blunderRate: 0.20
   },
   {
-    id: 'bot_1200',
-    elo: 1200,
-    name: {
-      vi: 'Phong Trào Quán Cà Phê (Bác Nam)',
-      en: 'Coffeehouse Hustler (Victor)'
-    },
-    title: {
-      vi: 'Kỳ Thủ Phong Trào',
-      en: 'Club Casual'
-    },
-    description: {
-      vi: 'Nhiều năm kinh nghiệm chơi cờ giải trí. Khai cuộc bài bản, chiến thuật sắc sảo.',
-      en: 'Years of informal play. Solid opening principles and alert tactical instincts.'
-    },
+    id: 'nelson',
+    name: 'Nelson',
+    elo: 1300,
+    category: 'intermediate',
     avatar: '🧔',
-    skillLevel: 7,
-    depth: 6,
-    blunderRate: 0.08,
-    personality: {
-      vi: 'Một ly cà phê và một ván cờ, xem ai chiếu ai trước nào!',
-      en: 'A good brew and a solid board, let the best moves win!'
-    }
-  },
-  {
-    id: 'bot_1500',
-    elo: 1500,
-    name: {
-      vi: 'Chiến Lược Gia (Lan Anh)',
-      en: 'Tactical Analyst (Elena)'
-    },
-    title: {
-      vi: 'Kỳ Thủ Bán Chuyên',
-      en: 'Intermediate Tactician'
+    avatarBg: '#f59e0b',
+    personalityTag: 'Queen Lover',
+    quote: {
+      vi: 'Hãy cẩn thận với con Hậu của tôi! Ra Hậu nước 2 là đam mê!',
+      en: 'You better watch out for my Queen! Wayward Queen Attack incoming!'
     },
     description: {
-      vi: 'Thành thạo cấu trúc tốt, chiếm lĩnh trung tâm và tính toán 3-5 nước đi phía trước.',
-      en: 'Masters pawn structures, open files, and calculates combinations 3-5 moves ahead.'
+      vi: 'Nelson là con bot nổi tiếng và gây ức chế nhất Chess.com, luôn mang Hậu ra sớm để rình rập bắt gà và đe dọa chiếu hết 4 nước.',
+      en: 'The infamous Chess.com bot known worldwide for bringing his Queen out early and hunting for quick tactical trickery.'
     },
-    avatar: '👩‍💼',
+    skillLevel: 8,
+    depth: 6,
+    blunderRate: 0.06
+  },
+  {
+    id: 'antonio',
+    name: 'Antonio',
+    elo: 1500,
+    category: 'intermediate',
+    avatar: '🧑‍💼',
+    avatarBg: '#10b981',
+    personalityTag: 'Solid Positional',
+    quote: {
+      vi: 'Cờ vua là sự kiên nhẫn. Tôi kiểm soát trung tâm và chờ bạn mắc sai lầm.',
+      en: 'Chess is patience. I control the center and wait for your mistake.'
+    },
+    description: {
+      vi: 'Antonio chơi lối cờ kỷ luật, chắc chắn, phát triển quân bài bản và trừng phạt ngay lập tức những sai sót chiến thuật nhỏ.',
+      en: 'Antonio plays clean, disciplined chess. Solid openings, central control, and reliable intermediate tactics.'
+    },
     skillLevel: 11,
     depth: 9,
-    blunderRate: 0.02,
-    personality: {
-      vi: 'Mọi sơ hở ở hàng tốt của bạn đều đã nằm trong tính toán.',
-      en: 'Every weakness in your pawn shield has been factored in.'
-    }
+    blunderRate: 0.02
   },
   {
-    id: 'bot_1800',
+    id: 'wally',
+    name: 'Wally',
     elo: 1800,
-    name: {
-      vi: 'Kiện Tướng Đội Tuyển (Hoàng)',
-      en: 'State Contender (Marcus)'
-    },
-    title: {
-      vi: 'Cao Thủ Tuyển Tỉnh',
-      en: 'Advanced Candidate'
+    category: 'advanced',
+    avatar: '👨‍🏫',
+    avatarBg: '#8b5cf6',
+    personalityTag: 'Endgame Specialist',
+    quote: {
+      vi: 'Mọi nước đi đều có ý nghĩa chiến lược sâu xa. Hãy sẵn sàng cho tàn cuộc.',
+      en: 'Every move serves a deeper strategic goal. Prepare for a sharp endgame.'
     },
     description: {
-      vi: 'Đạt thứ hạng cao ở các giải mở rộng. Tấn công vị trí vua đối phương tàn nhẫn.',
-      en: 'Tournament medalist. Unforgiving king hunt and precise positional squeeze.'
+      vi: 'Wally sở hữu sức cờ của một cao thủ giải đấu, thành thạo cấu trúc tốt, đòn phối hợp chiến thuật và kỹ thuật tàn cuộc xe.',
+      en: 'Wally plays at a strong club tournament level with sharp calculations and master-level rook endgame technique.'
     },
-    avatar: '🧙‍♂️',
     skillLevel: 15,
     depth: 13,
-    blunderRate: 0.0,
-    personality: {
-      vi: 'Cờ vua là một môn khoa học chính xác. Đừng để lộ sơ hở.',
-      en: 'Chess is an exact science. Flaws are punished immediately.'
-    }
+    blunderRate: 0.0
   },
   {
-    id: 'bot_2200',
+    id: 'francis',
+    name: 'Francis',
     elo: 2200,
-    name: {
-      vi: 'Đại Sư Stockfish (AI Thần Cờ)',
-      en: 'Stockfish Master (Grandmaster AI)'
-    },
-    title: {
-      vi: 'Kiện Tướng Quốc Tế FIDE',
-      en: 'FIDE Master Engine'
+    category: 'master',
+    avatar: '🧙‍♂️',
+    avatarBg: '#ef4444',
+    personalityTag: 'Master Engine',
+    quote: {
+      vi: 'Độ chính xác tuyệt đối. Stockfish tính toán sâu 18 nước trong từng biến.',
+      en: 'Near-flawless precision. Evaluating 18 plies deep in every variation.'
     },
     description: {
-      vi: 'Sức mạnh tối thượng của thuật toán Stockfish mở rộng. Tính toán hàng triệu nước cờ.',
-      en: 'Full power of Stockfish engine. Evaluates millions of variations with cold precision.'
+      vi: 'Francis đại diện cho đẳng cấp Kiện tướng Quốc tế (FIDE Master). Không bỏ lỡ bất kỳ cơ hội chiến thuật nào và trừng phạt tàn khốc.',
+      en: 'Francis plays at FIDE Master strength using deep Stockfish evaluation. Unforgiving in tactical and positional play.'
     },
-    avatar: '🤖',
     skillLevel: 20,
     depth: 18,
-    blunderRate: 0.0,
-    personality: {
-      vi: 'Thuật toán đã thấy kết quả sau 20 nước nữa. Chúc bạn may mắn.',
-      en: 'Depth calculation complete. Best of luck in the labyrinth.'
-    }
+    blunderRate: 0.0
   }
 ];
 
 export const TRANSLATIONS = {
   vi: {
-    appTitle: 'LIQUID GLASS CHESS 3D',
-    appSubtitle: 'CỜ VUA THỦY TINH LỎNG • STOCKFISH AI',
-    selectBot: 'CHỌN ĐỐI THỦ MÁY (BOT)',
-    elo: 'Elo',
-    difficulty: 'Cấp độ',
-    playAsWhite: 'Cầm quân Trắng (Đi trước)',
-    playAsBlack: 'Cầm quân Đen (Đi sau)',
-    startGame: 'Bắt Đầu Ván Đấu',
+    appTitle: 'CHESS 3D',
+    appSubtitle: 'CHƠI VỚI STOCKFISH AI',
+    menu: 'Menu',
     newGame: 'Ván Cờ Mới',
+    restartMatch: 'Đấu Lại',
+    changeBot: 'Chọn Đối Thủ Bot',
     resign: 'Đầu Hàng',
-    undo: 'Đi Lại (Undo)',
-    hint: 'Gợi Ý Nước Đi',
+    undo: 'Đi Lại',
+    hint: 'Gợi Ý',
     flipBoard: 'Xoay Bàn Cờ',
-    cameraPresets: 'Góc Nhìn Camera',
-    viewPerspective: '3D Nghệ Thuật (Gốc)',
-    viewTopdown: '2D Nhìn Thẳng (Top-Down)',
-    viewWhite: 'Góc Cầm Trắng',
-    viewBlack: 'Góc Cầm Đen',
-    autoRotate: 'Tự xoay theo lượt',
-    sound: 'Âm thanh hiệu ứng',
-    coordinates: 'Ký hiệu tọa độ A-H / 1-8',
-    pieceTheme: 'Chất liệu quân cờ',
-    boardTheme: 'Chất liệu bàn cờ',
-    liquidGlass: 'Thủy Tinh Lỏng (Liquid Glass)',
-    classicWood: 'Gỗ Tự Nhiên Cổ Điển',
+    cameraTilt: 'Góc Nhìn Bàn Cờ',
+    viewPhoto: 'Chuẩn Ảnh Mẫu (Nghiêng nhẹ 3D)',
+    viewTopdown: 'Nhìn Thẳng 2D',
+    viewFree3d: 'Tự Do Xoay 3D',
+    theme: 'Giao Diện & Chất Liệu',
+    pieceTheme: 'Chất Liệu Quân Cờ',
+    boardTheme: 'Chất Liệu Bàn Cờ',
+    classicWood: 'Gỗ Mộc Cổ Điển (Như Ảnh Mẫu)',
+    liquidGlass: 'Thủy Tinh Lỏng Pha Lê',
     emeraldJade: 'Ngọc Bích Hoàng Gia',
-    cyberNeon: 'Kính Neon Dạ Quang',
-    rusticWood: 'Gỗ Mộc Cổ Điển (Như Ảnh)',
-    obsidianMarble: 'Đá Cẩm Thạch & Hắc Diệp',
+    cyberNeon: 'Neon Cyber Phát Quang',
+    rusticWood: 'Gỗ Tự Nhiên Mộc Mạc',
+    obsidianMarble: 'Đá Cẩm Thạch Đen',
     tournamentBlue: 'Xanh Thi Đấu FIDE',
+    sound: 'Âm Thanh Nước Đi',
+    coordinates: 'Tọa Độ Bàn Cờ (A-H, 1-8)',
+    showEval: 'Thanh Đánh Giá (Evaluation Bar)',
     timeControl: 'Thời Gian Ván Đấu',
-    unlimitedTime: 'Không giới hạn thời gian',
-    bullet1m: '1 phút (Siêu chớp Bullet)',
-    blitz3m: '3 phút (Chớp Blitz)',
-    blitz5m: '5 phút (Chớp Blitz)',
-    rapid10m: '10 phút (Nhanh Rapid)',
-    yourTurn: 'LƯỢT CỦA BẠN',
-    botTurn: 'LƯỢT CỦA BOT',
-    thinking: 'Stockfish đang tính toán...',
+    unlimitedTime: 'Không giới hạn',
+    bullet1m: '1 phút (Bullet)',
+    blitz3m: '3 phút (Blitz)',
+    blitz5m: '5 phút (Blitz)',
+    rapid10m: '10 phút (Rapid)',
+    whiteMove: 'Lượt Trắng đi',
+    blackMove: 'Lượt Đen đi',
+    whitesMoveText: "{num}. Lượt Trắng đi",
+    blacksMoveText: "{num}. Lượt Đen đi",
+    yourTurn: 'LƯỢT BẠN',
+    botTurn: 'LƯỢT MÁY',
+    botThinking: 'Đang suy nghĩ...',
     check: 'CHIẾU TƯỚNG!',
     checkmate: 'CHIẾU HẾT!',
-    drawStalemate: 'Hòa do Hết nước đi (Pát / Stalemate)',
+    drawStalemate: 'Hòa do Hết nước đi (Stalemate)',
     drawRepetition: 'Hòa do Lặp lại 3 lần',
-    drawMaterial: 'Hòa do Không đủ lực lượng chiếu hết',
-    draw50Moves: 'Hòa do Quy tắc 50 nước không ăn quân',
-    youWon: 'XUẤT SẮC! BẠN ĐÃ CHIẾN THẮNG!',
-    youLost: 'MÁY ĐÃ CHIẾN THẮNG!',
-    gameDraw: 'TRẬN ĐẤU KẾT THÚC HÒA!',
-    resignConfirmTitle: 'Xác nhận đầu hàng?',
-    resignConfirmMsg: 'Bạn có chắc chắn muốn chịu thua ván cờ này không?',
-    confirmYes: 'Chấp Nhận Đầu Hàng',
-    confirmCancel: 'Tiếp Tục Chơi',
-    promoteTitle: 'PHONG CẤP TỐT (PROMOTION)',
-    promoteSubtitle: 'Chọn quân cờ bạn muốn biến hóa thành:',
-    queen: 'Hậu (Queen)',
-    rook: 'Xe (Rook)',
-    bishop: 'Tượng (Bishop)',
-    knight: 'Mã (Knight)',
-    capturedWhite: 'Quân Trắng đã ăn:',
-    capturedBlack: 'Quân Đen đã ăn:',
-    advantage: 'Lợi thế',
-    evalEqual: 'Thế cờ cân bằng (0.0)',
-    evalWhite: 'Trắng chiếm ưu thế (+{val})',
-    evalBlack: 'Đen chiếm ưu thế (-{val})',
-    evalMate: 'Chiếu hết trong {val} nước!',
-    moveHistory: 'Lịch sử nước đi',
-    whitePlayer: 'Người chơi (Trắng)',
-    blackPlayer: 'Máy Stockfish (Đen)',
-    hintText: 'Nước đi đề xuất: {from} ➔ {to}',
-    githubReady: 'Đã sẵn sàng tải lên GitHub minhhoang2007',
-    githubRepo: 'Kho lưu trữ GitHub',
-    settings: 'Cài Đặt & Giao Diện',
+    drawMaterial: 'Hòa do Thiếu lực lượng',
+    draw50Moves: 'Hòa quy tắc 50 nước',
+    youWon: 'CHIẾN THẮNG!',
+    youLost: 'MÁY THẮNG!',
+    gameDraw: 'HÒA CỜ!',
+    playAsWhite: 'Cầm quân Trắng',
+    playAsBlack: 'Cầm quân Đen',
+    selectBotTitle: 'CHỌN BOT CHESS.COM',
+    startGame: 'Bắt Đầu',
     close: 'Đóng',
-    restartMatch: 'Đấu Lại',
-    changeBot: 'Đổi Đối Thủ',
-    evalBarTooltip: 'Thanh đánh giá thực tế của Stockfish Engine'
+    confirmResignTitle: 'Đầu hàng ván cờ?',
+    confirmResignMsg: 'Bạn có chắc chắn muốn chịu thua ván đấu này không?',
+    confirmYes: 'Đầu Hàng',
+    confirmNo: 'Hủy',
+    promoteTitle: 'PHONG CẤP TỐT',
+    queen: 'Hậu',
+    rook: 'Xe',
+    bishop: 'Tượng',
+    knight: 'Mã',
+    history: 'Biên Bản Nước Đi',
+    hintMessage: 'Gợi ý nước đi: {move}'
   },
   en: {
-    appTitle: 'LIQUID GLASS CHESS 3D',
-    appSubtitle: 'REALISTIC GLASS CHESS • POWERED BY STOCKFISH AI',
-    selectBot: 'SELECT AI OPPONENT',
-    elo: 'Elo',
-    difficulty: 'Level',
-    playAsWhite: 'Play as White (First move)',
-    playAsBlack: 'Play as Black (Second move)',
-    startGame: 'Start Game',
+    appTitle: 'CHESS 3D',
+    appSubtitle: 'PLAY WITH STOCKFISH AI',
+    menu: 'Menu',
     newGame: 'New Game',
+    restartMatch: 'Rematch',
+    changeBot: 'Choose Bot Opponent',
     resign: 'Resign',
-    undo: 'Undo Move',
-    hint: 'Get Best Move Hint',
+    undo: 'Undo',
+    hint: 'Hint',
     flipBoard: 'Flip Board',
-    cameraPresets: 'Camera Presets',
-    viewPerspective: '3D Perspective (Photo angle)',
-    viewTopdown: '2D Top-Down View',
-    viewWhite: 'White Side View',
-    viewBlack: 'Black Side View',
-    autoRotate: 'Auto-rotate on turn',
-    sound: 'Sound Effects',
-    coordinates: 'Board Coordinates A-H / 1-8',
-    pieceTheme: 'Chess Piece Material',
+    cameraTilt: 'Camera View',
+    viewPhoto: 'Photo Angle (Subtle 3D)',
+    viewTopdown: '2D Top-Down',
+    viewFree3d: 'Free 3D Orbit',
+    theme: 'Themes & Aesthetics',
+    pieceTheme: 'Piece Material',
     boardTheme: 'Board Material',
+    classicWood: 'Classic Wood (Like Photo)',
     liquidGlass: 'Realistic Liquid Glass',
-    classicWood: 'Classic Polished Wood',
     emeraldJade: 'Royal Emerald Jade',
     cyberNeon: 'Cyber Neon Glass',
-    rusticWood: 'Rustic Wood Desk (Like Photo)',
+    rusticWood: 'Rustic Wood Planks',
     obsidianMarble: 'Obsidian & Marble',
     tournamentBlue: 'FIDE Tournament Blue',
+    sound: 'Move Sounds',
+    coordinates: 'Board Coordinates (A-H, 1-8)',
+    showEval: 'Evaluation Bar',
     timeControl: 'Time Control',
-    unlimitedTime: 'Unlimited Time',
+    unlimitedTime: 'Unlimited',
     bullet1m: '1 min (Bullet)',
     blitz3m: '3 min (Blitz)',
     blitz5m: '5 min (Blitz)',
     rapid10m: '10 min (Rapid)',
+    whiteMove: "White's move",
+    blackMove: "Black's move",
+    whitesMoveText: "{num}. White's move",
+    blacksMoveText: "{num}. Black's move",
     yourTurn: 'YOUR TURN',
-    botTurn: "STOCKFISH'S TURN",
-    thinking: 'Stockfish is calculating...',
+    botTurn: "BOT'S TURN",
+    botThinking: 'Thinking...',
     check: 'CHECK!',
     checkmate: 'CHECKMATE!',
     drawStalemate: 'Draw by Stalemate',
     drawRepetition: 'Draw by Threefold Repetition',
     drawMaterial: 'Draw by Insufficient Material',
     draw50Moves: 'Draw by 50-Move Rule',
-    youWon: 'BRILLIANT! YOU WON!',
-    youLost: 'STOCKFISH WON!',
-    gameDraw: 'GAME DRAWN!',
-    resignConfirmTitle: 'Confirm Resignation?',
-    resignConfirmMsg: 'Are you sure you want to resign this game?',
-    confirmYes: 'Yes, Resign',
-    confirmCancel: 'Continue Playing',
-    promoteTitle: 'PAWN PROMOTION',
-    promoteSubtitle: 'Choose the piece to promote to:',
+    youWon: 'YOU WON!',
+    youLost: 'BOT WON!',
+    gameDraw: 'DRAW!',
+    playAsWhite: 'Play as White',
+    playAsBlack: 'Play as Black',
+    selectBotTitle: 'SELECT CHESS.COM BOT',
+    startGame: 'Start Game',
+    close: 'Close',
+    confirmResignTitle: 'Resign game?',
+    confirmResignMsg: 'Are you sure you want to resign this game?',
+    confirmYes: 'Resign',
+    confirmNo: 'Cancel',
+    promoteTitle: 'PROMOTE PAWN',
     queen: 'Queen',
     rook: 'Rook',
     bishop: 'Bishop',
     knight: 'Knight',
-    capturedWhite: 'White captures:',
-    capturedBlack: 'Black captures:',
-    advantage: 'Advantage',
-    evalEqual: 'Position is equal (0.0)',
-    evalWhite: 'White is winning (+{val})',
-    evalBlack: 'Black is winning (-{val})',
-    evalMate: 'Forced mate in {val} moves!',
-    moveHistory: 'Move Notation',
-    whitePlayer: 'Player (White)',
-    blackPlayer: 'Stockfish AI (Black)',
-    hintText: 'Engine recommended move: {from} ➔ {to}',
-    githubReady: 'Ready for GitHub minhhoang2007',
-    githubRepo: 'GitHub Repository',
-    settings: 'Settings & Visuals',
-    close: 'Close',
-    restartMatch: 'Rematch',
-    changeBot: 'Change Opponent',
-    evalBarTooltip: 'Live Stockfish Engine Position Evaluation'
+    history: 'Move History',
+    hintMessage: 'Suggested move: {move}'
   }
 };

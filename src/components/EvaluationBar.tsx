@@ -41,7 +41,7 @@ export const EvaluationBar: React.FC<EvaluationBarProps> = ({ evaluation, langua
   return (
     <div
       className="relative flex flex-col items-center w-8 md:w-9 h-64 md:h-80 bg-neutral-900/90 rounded-xl overflow-hidden border border-white/10 shadow-2xl backdrop-blur-md"
-      title={t.evalBarTooltip}
+      title={language === 'vi' ? 'Thanh đánh giá thế trận Stockfish' : 'Stockfish live position evaluation'}
     >
       {/* Black's section (top) */}
       <div

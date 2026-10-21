@@ -4,17 +4,17 @@ export type { Square, PieceSymbol, Color };
 
 export type Language = 'vi' | 'en';
 
-export type PieceTheme = 'liquid-glass' | 'classic-wood' | 'emerald-jade' | 'cyber-neon';
+export type PieceTheme = 'classic-wood' | 'liquid-glass' | 'emerald-jade' | 'cyber-neon';
 export type BoardTheme = 'rustic-wood' | 'obsidian-marble' | 'tournament-blue';
 
 export interface BotProfile {
   id: string;
+  name: string; // e.g., "Jimmy", "Nelson", "Antonio"
   elo: number;
-  name: {
-    vi: string;
-    en: string;
-  };
-  title: {
+  category: 'beginner' | 'intermediate' | 'advanced' | 'master';
+  avatar: string; // stylized SVG / image avatar
+  avatarBg: string;
+  quote: {
     vi: string;
     en: string;
   };
@@ -22,14 +22,10 @@ export interface BotProfile {
     vi: string;
     en: string;
   };
-  avatar: string;
   skillLevel: number; // Stockfish Skill Level 0-20
   depth: number;
-  blunderRate: number; // 0.0 to 1.0
-  personality: {
-    vi: string;
-    en: string;
-  };
+  blunderRate: number; // probability of suboptimal move
+  personalityTag: string;
 }
 
 export interface MoveRecord {
@@ -41,7 +37,7 @@ export interface MoveRecord {
   captured?: PieceSymbol;
   promotion?: PieceSymbol;
   fen: string;
-  timeTaken?: number;
+  moveNumber: number;
 }
 
 export interface CapturedPieces {
@@ -54,7 +50,6 @@ export type TimeControl = 'unlimited' | '60' | '180' | '300' | '600';
 export interface EvaluationState {
   type: 'cp' | 'mate';
   value: number; // positive = White advantage, negative = Black advantage
-  depth?: number;
 }
 
 export interface GameSettings {
@@ -64,7 +59,6 @@ export interface GameSettings {
   soundEnabled: boolean;
   showCoordinates: boolean;
   showLegalMoves: boolean;
-  showBestMoveHint: boolean;
-  autoRotateOnTurn: boolean;
-  cameraView: 'perspective' | 'topdown' | 'white' | 'black';
+  showEvaluationBar: boolean;
+  cameraTilt: 'photo' | 'topdown' | 'free3d';
 }

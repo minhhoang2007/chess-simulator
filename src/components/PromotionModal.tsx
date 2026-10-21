@@ -33,7 +33,7 @@ export const PromotionModal: React.FC<PromotionModalProps> = ({
           {t.promoteTitle}
         </h3>
         <p className="text-xs text-neutral-400 mb-6">
-          {t.promoteSubtitle}
+          {language === 'vi' ? 'Chọn quân cờ bạn muốn biến hóa thành:' : 'Choose a piece to promote to:'}
         </p>
 
         <div className="grid grid-cols-2 gap-4">

@@ -66,8 +66,8 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         </p>
         <p className="text-xs text-neutral-400 mb-6">
           {language === 'vi'
-            ? `Trận đấu với ${bot.name.vi} (${bot.elo} Elo)`
-            : `Match vs ${bot.name.en} (${bot.elo} Elo)`}
+            ? `Trận đấu với ${bot.name} (${bot.elo} Elo)`
+            : `Match vs ${bot.name} (${bot.elo} Elo)`}
         </p>
 
         {/* Action Buttons */}

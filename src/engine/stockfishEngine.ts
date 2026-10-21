@@ -26,14 +26,13 @@ class StockfishEngineService {
     if (typeof window === 'undefined') return;
 
     try {
-      // Determine wasm support
       const wasmSupported = typeof WebAssembly === 'object' && typeof WebAssembly.validate === 'function';
       const workerUrl = wasmSupported ? '/stockfish.wasm.js' : '/stockfish.js';
 
       this.worker = new Worker(workerUrl);
       this.worker.onmessage = this.handleWorkerMessage.bind(this);
       this.worker.onerror = (err) => {
-        console.warn('Stockfish Worker error, falling back to local JS evaluator:', err);
+        console.warn('Stockfish Worker error, using local engine:', err);
         this.worker = null;
         this.isReady = true;
         this.flushReadyCallbacks();
@@ -93,8 +92,6 @@ class StockfishEngineService {
   private parseEvaluation(infoLine: string) {
     if (!this.evalCallback) return;
 
-    // e.g.: info depth 12 seldepth 16 score cp 35 nodes 24818 nps 496360 time 50 pv e2e4 e7e5
-    // or:   info depth 10 score mate -2 ...
     const mateMatch = infoLine.match(/score mate (-?\d+)/);
     if (mateMatch) {
       const mate = parseInt(mateMatch[1], 10);
@@ -104,8 +101,7 @@ class StockfishEngineService {
 
     const cpMatch = infoLine.match(/score cp (-?\d+)/);
     if (cpMatch) {
-      let cp = parseInt(cpMatch[1], 10) / 100;
-      // In UCI, evaluation is relative to the side whose turn it is.
+      const cp = parseInt(cpMatch[1], 10) / 100;
       this.evalCallback({ type: 'cp', value: cp });
     }
   }
@@ -135,11 +131,26 @@ class StockfishEngineService {
   public getBestMove(game: Chess, bot: BotProfile, onDone: (result: BestMoveResult) => void) {
     this.configureBot(bot);
 
-    // Blunder injection for beginner bots (600-900 Elo)
+    // Nelson Personality: loves early Queen moves!
+    if (bot.id === 'nelson' && game.history().length < 6) {
+      const legalMoves = game.moves({ verbose: true });
+      const queenMove = legalMoves.find((m) => m.piece === 'q');
+      if (queenMove && Math.random() < 0.65) {
+        setTimeout(() => {
+          onDone({
+            from: queenMove.from,
+            to: queenMove.to,
+            promotion: queenMove.promotion as 'q' | 'r' | 'b' | 'n' | undefined
+          });
+        }, 500);
+        return;
+      }
+    }
+
+    // Blunder injection for beginner bots (Jimmy 600, Zara 850)
     if (bot.blunderRate > 0 && Math.random() < bot.blunderRate) {
       const legalMoves = game.moves({ verbose: true });
       if (legalMoves.length > 0) {
-        // Pick a non-best legal move
         const randomIndex = Math.floor(Math.random() * legalMoves.length);
         const randomMove = legalMoves[randomIndex];
         setTimeout(() => {
@@ -148,7 +159,7 @@ class StockfishEngineService {
             to: randomMove.to,
             promotion: randomMove.promotion as 'q' | 'r' | 'b' | 'n' | undefined
           });
-        }, 500 + Math.random() * 500);
+        }, 400 + Math.random() * 400);
         return;
       }
     }
@@ -158,34 +169,30 @@ class StockfishEngineService {
       this.sendCommand('stop');
       this.sendCommand(`position fen ${game.fen()}`);
 
-      const movetime = Math.min(1500, Math.max(300, bot.skillLevel * 80));
+      const movetime = Math.min(1400, Math.max(300, bot.skillLevel * 70));
       this.sendCommand(`go depth ${bot.depth} movetime ${movetime}`);
 
-      // Safety timeout: If Stockfish takes longer than 4.5 seconds, use fallback
       this.searchTimeout = window.setTimeout(() => {
         if (this.onMoveCallback) {
-          console.warn('Stockfish engine timed out, using fallback evaluator');
           this.onMoveCallback = null;
           const fallback = this.calculateLocalMove(game, bot);
           onDone(fallback);
         }
-      }, 4500);
+      }, 4000);
     } else {
-      // Local Minimax / Heuristic Evaluator
       setTimeout(() => {
         const move = this.calculateLocalMove(game, bot);
         onDone(move);
-      }, 400 + Math.random() * 400);
+      }, 350 + Math.random() * 350);
     }
   }
 
-  // Robust Alpha-Beta Minimax Local Fallback
+  // Robust Alpha-Beta Minimax Fallback
   private calculateLocalMove(game: Chess, bot: BotProfile): BestMoveResult {
     const legalMoves = game.moves({ verbose: true });
     if (legalMoves.length === 0) {
       return { from: 'e7', to: 'e8' };
     }
-
     if (legalMoves.length === 1) {
       return {
         from: legalMoves[0].from,
@@ -194,35 +201,19 @@ class StockfishEngineService {
       };
     }
 
-    const pieceValues: Record<string, number> = {
-      p: 100,
-      n: 320,
-      b: 330,
-      r: 500,
-      q: 900,
-      k: 20000
-    };
-
+    const pieceValues: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
     let bestMove = legalMoves[0];
     let bestScore = -Infinity;
 
-    // Simple 1-2 ply evaluate with capture / check incentives
     for (const move of legalMoves) {
       let score = 0;
       if (move.captured) {
         score += (pieceValues[move.captured] || 100) * 10 - (pieceValues[move.piece] || 100);
       }
-      if (move.san.includes('+')) {
-        score += 50;
-      }
-      if (move.san.includes('#')) {
-        score += 100000;
-      }
-      if (move.from === 'e4' || move.from === 'd4' || move.to === 'e4' || move.to === 'd4' || move.to === 'e5' || move.to === 'd5') {
-        score += 25;
-      }
+      if (move.san.includes('+')) score += 50;
+      if (move.san.includes('#')) score += 100000;
+      if (['e4', 'd4', 'e5', 'd5'].includes(move.to)) score += 20;
 
-      // Add a slight noise according to bot Elo
       const noise = (Math.random() - 0.5) * (2400 - bot.elo) * 0.1;
       const finalScore = score + noise;
 

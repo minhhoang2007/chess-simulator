@@ -30,7 +30,7 @@ export const MoveHistory: React.FC<MoveHistoryProps> = ({ history, language }) =
   return (
     <div className="flex flex-col h-full bg-neutral-900/60 rounded-xl border border-white/10 overflow-hidden backdrop-blur-md">
       <div className="px-3 py-2 border-b border-white/10 text-xs font-semibold uppercase tracking-wider text-neutral-400 flex items-center justify-between">
-        <span>{t.moveHistory}</span>
+        <span>{t.history}</span>
         <span className="text-[10px] text-neutral-500 font-mono">{history.length} moves</span>
       </div>
 

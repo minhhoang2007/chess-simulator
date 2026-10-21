@@ -1,145 +1,136 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Chess, Square, PieceSymbol, Color } from 'chess.js';
 import { BoardTheme, PieceTheme } from '../types/chess';
 import { StauntonGeometryFactory } from './StauntonGeometry';
 import { TextureGenerator } from './TextureGenerator';
-
-export interface MoveAnimation {
-  mesh: THREE.Mesh;
-  startPos: THREE.Vector3;
-  endPos: THREE.Vector3;
-  startTime: number;
-  duration: number;
-  onComplete: () => void;
-}
 
 export class ChessScene {
   private container: HTMLElement;
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
-  private controls: OrbitControls;
   private animationFrameId: number | null = null;
 
   // Meshes & Cache
   private piecesMap: Map<Square, THREE.Mesh> = new Map();
-  private pieceTheme: PieceTheme = 'liquid-glass';
+  private pieceTheme: PieceTheme = 'classic-wood';
   private boardTheme: BoardTheme = 'rustic-wood';
   private showCoordinates: boolean = true;
   private boardMesh: THREE.Mesh | null = null;
   private tableMesh: THREE.Mesh | null = null;
   private highlightGroup: THREE.Group = new THREE.Group();
-  private hintArrowMesh: THREE.Group | null = null;
+  private hintMesh: THREE.Group | null = null;
   private checkMesh: THREE.Mesh | null = null;
 
-  // Interaction
-  private raycaster: THREE.Raycaster = new THREE.Raycaster();
-  private mouse: THREE.Vector2 = new THREE.Vector2();
-  private selectedSquare: Square | null = null;
-  private legalMoveSquares: Square[] = [];
-  private onSquareClickCallback: ((square: Square) => void) | null = null;
+  // Board Plane for Accurate Raycasting
+  private boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.22);
+  private raycaster = new THREE.Raycaster();
+  private mouse = new THREE.Vector2();
 
-  // Active Animations
-  private activeMoveAnimations: MoveAnimation[] = [];
+  // Interaction State
+  private selectedSquare: Square | null = null;
+  private legalMoves: Square[] = [];
+  private draggedMesh: THREE.Mesh | null = null;
+  private dragStartSquare: Square | null = null;
+  private dragStartPosition = new THREE.Vector3();
+  private isPointerDown = false;
+  private pointerDownCoord = { x: 0, y: 0 };
+  private isDragging = false;
+
+  // Callbacks
+  private onMoveCallback: ((from: Square, to: Square) => void) | null = null;
+  private onSelectSquareCallback: ((square: Square) => void) | null = null;
+
+  // Orientation
+  private isFlipped = false; // false = White at bottom, true = Black at bottom
+
+  // Subtle 3D Camera Angles (matching reference photo)
+  private readonly PHOTO_CAMERA_POS = new THREE.Vector3(0, 13.5, 5.0);
+  private readonly PHOTO_CAMERA_TARGET = new THREE.Vector3(0, 0, 0);
 
   constructor(container: HTMLElement) {
     this.container = container;
 
     // 1. Scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0f1118);
+    this.scene.background = new THREE.Color(0x1a120c);
 
-    // 2. Camera (default view matching the user's reference angle)
+    // 2. Camera with Telephoto FOV (Subtle 3D, identical to reference image!)
     const aspect = container.clientWidth / container.clientHeight;
-    this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 100);
-    this.camera.position.set(0, 9.2, 8.2);
-    this.camera.lookAt(0, 0, 0);
+    this.camera = new THREE.PerspectiveCamera(30, aspect, 0.1, 100);
+    this.camera.position.copy(this.PHOTO_CAMERA_POS);
+    this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
 
-    // 3. Renderer with realistic ACES Filmic Tone Mapping and Shadows
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+    // 3. Renderer with realistic soft shadows & filmic tone
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.05;
     container.appendChild(this.renderer.domElement);
 
-    // 4. OrbitControls
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.08; // don't go below table
-    this.controls.minDistance = 4;
-    this.controls.maxDistance = 18;
-    this.controls.target.set(0, 0, 0);
-
-    // 5. Lights & Studio Environment
+    // 4. Studio Lighting (soft directional key + ambient + rim)
     this.setupLighting();
 
-    // 6. Table & Board
+    // 5. Wood Table & 3D Chessboard Box
     this.setupTableAndBoard();
 
-    // 7. Highlights group
+    // 6. Highlights & Markers
     this.scene.add(this.highlightGroup);
 
-    // 8. Event listeners
-    this.setupEvents();
+    // 7. Event Listeners for Raycasting & Drag-and-drop
+    this.setupInteractivity();
 
-    // 9. Start loop
+    // 8. Render loop
     this.animate = this.animate.bind(this);
     this.animate();
   }
 
   private setupLighting() {
-    // Ambient light for base illumination
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    // Ambient light
+    const ambientLight = new THREE.AmbientLight(0xfffaed, 0.95);
     this.scene.add(ambientLight);
 
-    // Main key directional light casting soft shadows
-    const keyLight = new THREE.DirectionalLight(0xfffaed, 2.2);
-    keyLight.position.set(6, 12, 6);
+    // Key light positioned slightly to the right & above (produces shadows matching photo)
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    keyLight.position.set(4, 14, 6);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 2048;
     keyLight.shadow.mapSize.height = 2048;
     keyLight.shadow.camera.near = 1;
     keyLight.shadow.camera.far = 25;
-    keyLight.shadow.camera.left = -6;
-    keyLight.shadow.camera.right = 6;
-    keyLight.shadow.camera.top = 6;
-    keyLight.shadow.camera.bottom = -6;
-    keyLight.shadow.bias = -0.0005;
+    keyLight.shadow.camera.left = -5;
+    keyLight.shadow.camera.right = 5;
+    keyLight.shadow.camera.top = 5;
+    keyLight.shadow.camera.bottom = -5;
+    keyLight.shadow.bias = -0.0003;
     this.scene.add(keyLight);
 
-    // Rim fill light for glass edge transmission
-    const rimLight = new THREE.DirectionalLight(0xaad5ff, 1.4);
-    rimLight.position.set(-8, 9, -7);
+    // Subtle back rim fill
+    const rimLight = new THREE.DirectionalLight(0xd4e4f7, 0.8);
+    rimLight.position.set(-5, 8, -6);
     this.scene.add(rimLight);
 
-    // Front soft fill
-    const frontFill = new THREE.DirectionalLight(0xffffff, 0.9);
-    frontFill.position.set(0, 4, 8);
-    this.scene.add(frontFill);
-
-    // Studio Environment Reflections
+    // Studio Environment for glass reflections
     try {
       const studioEnv = TextureGenerator.createStudioEnvironment(this.renderer);
       this.scene.environment = studioEnv.texture;
     } catch (e) {
-      console.warn('Could not generate studio environment cubemap:', e);
+      console.warn('Environment map warning:', e);
     }
   }
 
   private setupTableAndBoard() {
-    // Rustic Wood Table Background (matches user's reference photo)
+    // Rustic Wood Table Background (matches the vertical plank wood in the user's photo)
     const tableTexture = TextureGenerator.createWoodTableTexture();
     const tableMat = new THREE.MeshStandardMaterial({
       map: tableTexture,
-      roughness: 0.8,
-      metalness: 0.1
+      roughness: 0.85,
+      metalness: 0.05
     });
-    const tableGeo = new THREE.PlaneGeometry(36, 36);
+    const tableGeo = new THREE.PlaneGeometry(32, 32);
     this.tableMesh = new THREE.Mesh(tableGeo, tableMat);
     this.tableMesh.rotation.x = -Math.PI / 2;
     this.tableMesh.position.y = -0.22;
@@ -147,40 +138,38 @@ export class ChessScene {
     this.scene.add(this.tableMesh);
 
     // 3D Chessboard Box
-    this.buildBoardMesh();
+    this.buildBoard();
   }
 
-  private buildBoardMesh() {
+  private buildBoard() {
     if (this.boardMesh) {
       this.scene.remove(this.boardMesh);
       this.boardMesh.geometry.dispose();
       this.boardMesh = null;
     }
 
-    const boardWidth = 8.8;
+    const boardWidth = 8.7;
     const boardThickness = 0.44;
     const boardGeo = new THREE.BoxGeometry(boardWidth, boardThickness, boardWidth);
 
-    // Textures: top face is checkerboard, sides are rich mahogany border
+    // Top face is checkerboard with coordinates
     const boardTopTexture = TextureGenerator.createChessboardTexture(this.boardTheme, this.showCoordinates);
     const topMat = new THREE.MeshStandardMaterial({
       map: boardTopTexture,
-      roughness: 0.35,
-      metalness: 0.05
+      roughness: 0.32,
+      metalness: 0.04
     });
 
+    // Sides are dark warm mahogany bevel
     const sideMat = new THREE.MeshStandardMaterial({
-      color: this.boardTheme === 'obsidian-marble' ? 0x0f172a : (this.boardTheme === 'tournament-blue' ? 0x1a2b3c : 0x3d2012),
+      color: this.boardTheme === 'obsidian-marble' ? 0x111827 : (this.boardTheme === 'tournament-blue' ? 0x1e3a5f : 0x3e2316),
       roughness: 0.4,
-      metalness: 0.1
+      metalness: 0.08
     });
 
-    const bottomMat = new THREE.MeshStandardMaterial({
-      color: 0x15100c,
-      roughness: 0.9
-    });
+    const bottomMat = new THREE.MeshStandardMaterial({ color: 0x100b08, roughness: 0.9 });
 
-    // Box materials order: +X, -X, +Y, -Y, +Z, -Z
+    // Order: +X, -X, +Y, -Y, +Z, -Z
     const materials = [sideMat, sideMat, topMat, bottomMat, sideMat, sideMat];
     this.boardMesh = new THREE.Mesh(boardGeo, materials);
     this.boardMesh.position.y = 0;
@@ -194,58 +183,58 @@ export class ChessScene {
     const isWhite = color === 'w';
 
     switch (this.pieceTheme) {
+      case 'classic-wood': {
+        // Authentic Polished Wood (Ivory cream & dark charcoal walnut - matching the photo!)
+        if (isWhite) {
+          return new THREE.MeshStandardMaterial({
+            color: 0xf5eedb,
+            roughness: 0.22,
+            metalness: 0.05
+          });
+        } else {
+          return new THREE.MeshStandardMaterial({
+            color: 0x221a16,
+            roughness: 0.25,
+            metalness: 0.05
+          });
+        }
+      }
+
       case 'liquid-glass': {
-        // Advanced MeshPhysicalMaterial with high transmission & refraction
+        // High refraction transmission glass
         if (isWhite) {
           return new THREE.MeshPhysicalMaterial({
-            color: 0xf5faff,
-            transmission: 0.92,
+            color: 0xf4f9ff,
+            transmission: 0.94,
             opacity: 1,
             transparent: true,
             roughness: 0.04,
             ior: 1.54,
-            thickness: 1.6,
+            thickness: 1.4,
             specularIntensity: 1.0,
             specularColor: new THREE.Color(0xffffff),
-            attenuationColor: new THREE.Color(0xd6ecff),
-            attenuationDistance: 2.2,
+            attenuationColor: new THREE.Color(0xd2eaff),
+            attenuationDistance: 2.0,
             clearcoat: 1.0,
             clearcoatRoughness: 0.04,
             envMapIntensity: 2.2
           });
         } else {
           return new THREE.MeshPhysicalMaterial({
-            color: 0x111624,
-            transmission: 0.84,
+            color: 0x121724,
+            transmission: 0.86,
             opacity: 1,
             transparent: true,
             roughness: 0.06,
             ior: 1.56,
-            thickness: 2.0,
+            thickness: 1.8,
             specularIntensity: 1.0,
-            specularColor: new THREE.Color(0x99ccff),
+            specularColor: new THREE.Color(0x88bbff),
             attenuationColor: new THREE.Color(0x182436),
-            attenuationDistance: 1.4,
+            attenuationDistance: 1.2,
             clearcoat: 1.0,
             clearcoatRoughness: 0.05,
             envMapIntensity: 1.8
-          });
-        }
-      }
-
-      case 'classic-wood': {
-        // Polished Ivory and Ebony Wood (matches user's reference photo)
-        if (isWhite) {
-          return new THREE.MeshStandardMaterial({
-            color: 0xf2ebd9,
-            roughness: 0.28,
-            metalness: 0.04
-          });
-        } else {
-          return new THREE.MeshStandardMaterial({
-            color: 0x221a15,
-            roughness: 0.25,
-            metalness: 0.04
           });
         }
       }
@@ -254,20 +243,18 @@ export class ChessScene {
         if (isWhite) {
           return new THREE.MeshPhysicalMaterial({
             color: 0xe8f5e9,
-            transmission: 0.75,
+            transmission: 0.72,
             roughness: 0.12,
             ior: 1.52,
-            thickness: 1.4,
-            attenuationColor: new THREE.Color(0xc8e6c9)
+            thickness: 1.4
           });
         } else {
           return new THREE.MeshPhysicalMaterial({
             color: 0x064e3b,
-            transmission: 0.72,
+            transmission: 0.70,
             roughness: 0.1,
             ior: 1.54,
-            thickness: 1.6,
-            attenuationColor: new THREE.Color(0x022c22)
+            thickness: 1.6
           });
         }
       }
@@ -278,42 +265,50 @@ export class ChessScene {
             color: 0x06b6d4,
             emissive: 0x0891b2,
             emissiveIntensity: 0.35,
-            roughness: 0.2,
-            metalness: 0.4
+            roughness: 0.2
           });
         } else {
           return new THREE.MeshStandardMaterial({
             color: 0x8b5cf6,
             emissive: 0x7c3aed,
             emissiveIntensity: 0.35,
-            roughness: 0.2,
-            metalness: 0.4
+            roughness: 0.2
           });
         }
       }
     }
   }
 
-  // --- COORDINATE HELPERS ---
+  // --- SQUARE / POSITION MAPPING ---
   public squareToPosition(square: Square): THREE.Vector3 {
-    const file = square.charCodeAt(0) - 97; // 'a' -> 0, 'h' -> 7
-    const rank = parseInt(square[1], 10) - 1; // '1' -> 0, '8' -> 7
+    let file = square.charCodeAt(0) - 97; // 0..7
+    let rank = parseInt(square[1], 10) - 1; // 0..7
+
+    if (this.isFlipped) {
+      file = 7 - file;
+      rank = 7 - rank;
+    }
 
     const squareSize = 1.0;
     const x = (file - 3.5) * squareSize;
     const z = (3.5 - rank) * squareSize;
-    const y = 0.22; // sits right on top of board
+    const y = 0.22; // rests on board surface
 
     return new THREE.Vector3(x, y, z);
   }
 
   public positionToSquare(pos: THREE.Vector3): Square | null {
     const squareSize = 1.0;
-    const fileIndex = Math.round(pos.x / squareSize + 3.5);
-    const rankIndex = Math.round(3.5 - pos.z / squareSize);
+    let fileIndex = Math.round(pos.x / squareSize + 3.5);
+    let rankIndex = Math.round(3.5 - pos.z / squareSize);
 
     if (fileIndex < 0 || fileIndex > 7 || rankIndex < 0 || rankIndex > 7) {
       return null;
+    }
+
+    if (this.isFlipped) {
+      fileIndex = 7 - fileIndex;
+      rankIndex = 7 - rankIndex;
     }
 
     const file = String.fromCharCode(97 + fileIndex);
@@ -321,23 +316,22 @@ export class ChessScene {
     return `${file}${rank}` as Square;
   }
 
-  // --- SYNC BOARD STATE WITH CHESS.JS ---
+  // --- BOARD SYNC ---
   public updateBoard(game: Chess) {
-    // Clear old pieces that are no longer on the board
     const currentBoard = game.board();
-    const newSquares = new Set<Square>();
+    const activeSquares = new Set<Square>();
 
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const piece = currentBoard[r][c];
         if (piece) {
           const square = piece.square;
-          newSquares.add(square);
+          activeSquares.add(square);
 
           const existingMesh = this.piecesMap.get(square);
           const needsRecreate = !existingMesh ||
-            (existingMesh.userData.type !== piece.type) ||
-            (existingMesh.userData.color !== piece.color);
+            existingMesh.userData.type !== piece.type ||
+            existingMesh.userData.color !== piece.color;
 
           if (needsRecreate) {
             if (existingMesh) {
@@ -345,14 +339,18 @@ export class ChessScene {
               this.piecesMap.delete(square);
             }
             this.createPieceMesh(square, piece.type, piece.color);
+          } else {
+            // Ensure position is updated (in case board flipped)
+            const targetPos = this.squareToPosition(square);
+            existingMesh.position.copy(targetPos);
           }
         }
       }
     }
 
-    // Remove pieces from squares that are now empty
+    // Remove deleted pieces
     for (const [sq, mesh] of this.piecesMap.entries()) {
-      if (!newSquares.has(sq)) {
+      if (!activeSquares.has(sq)) {
         this.scene.remove(mesh);
         this.piecesMap.delete(sq);
       }
@@ -371,11 +369,9 @@ export class ChessScene {
     mesh.receiveShadow = true;
     mesh.userData = { square, type, color };
 
-    // Position
-    const pos = this.squareToPosition(square);
-    mesh.position.copy(pos);
+    mesh.position.copy(this.squareToPosition(square));
 
-    // Orientation: Knights and Kings
+    // Orientation: Knights face inward toward the opponent
     if (type === 'n') {
       mesh.rotation.y = color === 'w' ? 0 : Math.PI;
     }
@@ -385,7 +381,7 @@ export class ChessScene {
     return mesh;
   }
 
-  // --- ANIMATED MOVE ---
+  // --- MOVE ANIMATION ---
   public animateMove(from: Square, to: Square, onFinish?: () => void) {
     const mesh = this.piecesMap.get(from);
     if (!mesh) {
@@ -393,54 +389,56 @@ export class ChessScene {
       return;
     }
 
-    // If there is an opponent piece on `to`, remove it or fade it out
     const targetPiece = this.piecesMap.get(to);
     if (targetPiece) {
       this.scene.remove(targetPiece);
       this.piecesMap.delete(to);
     }
 
-    // Update map immediately
     this.piecesMap.delete(from);
     this.piecesMap.set(to, mesh);
     mesh.userData.square = to;
 
     const startPos = mesh.position.clone();
     const endPos = this.squareToPosition(to);
+    const startTime = performance.now();
+    const duration = 260; // crisp, responsive 260ms animation
 
-    const anim: MoveAnimation = {
-      mesh,
-      startPos,
-      endPos,
-      startTime: performance.now(),
-      duration: 320, // 320ms smooth jump
-      onComplete: () => {
+    const animStep = () => {
+      const elapsed = performance.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = progress * progress * (3 - 2 * progress);
+
+      mesh.position.x = THREE.MathUtils.lerp(startPos.x, endPos.x, ease);
+      mesh.position.z = THREE.MathUtils.lerp(startPos.z, endPos.z, ease);
+      mesh.position.y = startPos.y + Math.sin(progress * Math.PI) * 0.45;
+
+      if (progress < 1) {
+        requestAnimationFrame(animStep);
+      } else {
         mesh.position.copy(endPos);
         if (onFinish) onFinish();
       }
     };
-
-    this.activeMoveAnimations.push(anim);
+    animStep();
   }
 
-  // --- HIGHLIGHTS (SELECTED SQUARE, LEGAL MOVES, LAST MOVE) ---
-  public setSelection(selected: Square | null, legalMoves: Square[]) {
+  // --- HIGHLIGHTS (LEGAL MOVES, LAST MOVE, SELECTED) ---
+  public setSelection(selected: Square | null, legal: Square[]) {
     this.selectedSquare = selected;
-    this.legalMoveSquares = legalMoves;
+    this.legalMoves = legal;
     this.refreshHighlights();
   }
 
   public setLastMove(from: Square | null, to: Square | null) {
-    // Keep last move tiles visible
-    this.lastMoveFrom = from;
-    this.lastMoveTo = to;
+    this.lastFrom = from;
+    this.lastTo = to;
     this.refreshHighlights();
   }
-  private lastMoveFrom: Square | null = null;
-  private lastMoveTo: Square | null = null;
+  private lastFrom: Square | null = null;
+  private lastTo: Square | null = null;
 
   private refreshHighlights() {
-    // Clear previous highlight meshes
     while (this.highlightGroup.children.length > 0) {
       const child = this.highlightGroup.children[0];
       this.highlightGroup.remove(child);
@@ -449,67 +447,67 @@ export class ChessScene {
       }
     }
 
-    // 1. Last Move squares (soft warm highlight)
-    if (this.lastMoveFrom) {
-      this.addSquareHighlight(this.lastMoveFrom, 0xf59e0b, 0.35);
+    // 1. Last move tiles (soft golden glow)
+    if (this.lastFrom) {
+      this.addSquareTile(this.lastFrom, 0xf59e0b, 0.32);
     }
-    if (this.lastMoveTo) {
-      this.addSquareHighlight(this.lastMoveTo, 0xf59e0b, 0.45);
+    if (this.lastTo) {
+      this.addSquareTile(this.lastTo, 0xf59e0b, 0.42);
     }
 
-    // 2. Selected Square (glowing emerald/cyan)
+    // 2. Selected square
     if (this.selectedSquare) {
-      this.addSquareHighlight(this.selectedSquare, 0x10b981, 0.55);
+      this.addSquareTile(this.selectedSquare, 0x10b981, 0.48);
     }
 
-    // 3. Legal Destination Squares (ring / circle markers)
-    for (const sq of this.legalMoveSquares) {
+    // 3. Legal move dots and capture rings
+    for (const sq of this.legalMoves) {
       const pos = this.squareToPosition(sq);
       const isCapture = this.piecesMap.has(sq);
 
       if (isCapture) {
-        // Red / Orange ring for capture
-        const ringGeo = new THREE.RingGeometry(0.32, 0.44, 32);
+        // Red capture ring
+        const ringGeo = new THREE.RingGeometry(0.30, 0.42, 32);
         const ringMat = new THREE.MeshBasicMaterial({
           color: 0xef4444,
           transparent: true,
-          opacity: 0.7,
+          opacity: 0.75,
           side: THREE.DoubleSide
         });
         const ring = new THREE.Mesh(ringGeo, ringMat);
         ring.rotation.x = -Math.PI / 2;
-        ring.position.set(pos.x, 0.225, pos.z);
+        ring.position.set(pos.x, 0.224, pos.z);
         this.highlightGroup.add(ring);
       } else {
-        // Small solid green/cyan dot for empty move square
+        // Green legal destination dot
         const dotGeo = new THREE.CircleGeometry(0.14, 24);
         const dotMat = new THREE.MeshBasicMaterial({
           color: 0x10b981,
           transparent: true,
-          opacity: 0.65,
+          opacity: 0.7,
           side: THREE.DoubleSide
         });
         const dot = new THREE.Mesh(dotGeo, dotMat);
         dot.rotation.x = -Math.PI / 2;
-        dot.position.set(pos.x, 0.225, pos.z);
+        dot.position.set(pos.x, 0.224, pos.z);
         this.highlightGroup.add(dot);
       }
     }
   }
 
-  private addSquareHighlight(sq: Square, colorHex: number, opacity: number) {
+  private addSquareTile(sq: Square, color: number, opacity: number) {
     const pos = this.squareToPosition(sq);
     const planeGeo = new THREE.PlaneGeometry(0.96, 0.96);
     const planeMat = new THREE.MeshBasicMaterial({
-      color: colorHex,
+      color,
       transparent: true,
-      opacity: opacity,
+      opacity,
       side: THREE.DoubleSide
     });
-    const plane = new THREE.Mesh(planeGeo, planeMat);
-    plane.rotation.x = -Math.PI / 2;
-    plane.position.set(pos.x, 0.222, pos.z);
-    this.highlightGroup.add(plane);
+    const mesh = new THREE.Mesh(planeGeo, planeMat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(pos.x, 0.222, pos.z);
+    this.highlightGroup.add(mesh);
   }
 
   // --- CHECK WARNING ---
@@ -522,11 +520,10 @@ export class ChessScene {
 
     if (game.inCheck()) {
       const turn = game.turn();
-      // Find king of current turn
       for (const [sq, mesh] of this.piecesMap.entries()) {
         if (mesh.userData.type === 'k' && mesh.userData.color === turn) {
           const pos = this.squareToPosition(sq);
-          const ringGeo = new THREE.RingGeometry(0.2, 0.46, 32);
+          const ringGeo = new THREE.RingGeometry(0.18, 0.44, 32);
           const ringMat = new THREE.MeshBasicMaterial({
             color: 0xdc2626,
             transparent: true,
@@ -535,7 +532,7 @@ export class ChessScene {
           });
           this.checkMesh = new THREE.Mesh(ringGeo, ringMat);
           this.checkMesh.rotation.x = -Math.PI / 2;
-          this.checkMesh.position.set(pos.x, 0.226, pos.z);
+          this.checkMesh.position.set(pos.x, 0.225, pos.z);
           this.scene.add(this.checkMesh);
           break;
         }
@@ -546,229 +543,216 @@ export class ChessScene {
   // --- HINT ARROW ---
   public showHint(from: Square, to: Square) {
     this.clearHint();
-
     const pFrom = this.squareToPosition(from);
     const pTo = this.squareToPosition(to);
 
     const dir = new THREE.Vector3().subVectors(pTo, pFrom);
-    const length = dir.length();
+    const len = dir.length();
     dir.normalize();
 
-    const arrowGroup = new THREE.Group();
-
-    // Curved tube or sleek arrow shaft
-    const shaftGeo = new THREE.CylinderGeometry(0.06, 0.06, length - 0.4, 16);
-    const arrowMat = new THREE.MeshStandardMaterial({
+    const group = new THREE.Group();
+    const shaftGeo = new THREE.CylinderGeometry(0.05, 0.05, len - 0.35, 16);
+    const mat = new THREE.MeshStandardMaterial({
       color: 0x38bdf8,
       emissive: 0x0284c7,
-      emissiveIntensity: 0.8,
-      roughness: 0.2
+      emissiveIntensity: 0.8
     });
+    const shaft = new THREE.Mesh(shaftGeo, mat);
+    shaft.position.set(0, (len - 0.35) / 2, 0);
 
-    const shaft = new THREE.Mesh(shaftGeo, arrowMat);
-    shaft.position.set(0, (length - 0.4) / 2, 0);
+    const headGeo = new THREE.ConeGeometry(0.16, 0.35, 20);
+    const head = new THREE.Mesh(headGeo, mat);
+    head.position.set(0, len - 0.18, 0);
 
-    // Cone head
-    const headGeo = new THREE.ConeGeometry(0.18, 0.4, 20);
-    const head = new THREE.Mesh(headGeo, arrowMat);
-    head.position.set(0, length - 0.2, 0);
+    group.add(shaft);
+    group.add(head);
 
-    arrowGroup.add(shaft);
-    arrowGroup.add(head);
+    group.position.copy(pFrom);
+    group.position.y += 0.32;
+    group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
 
-    // Position & orient arrow from start square to end square
-    arrowGroup.position.copy(pFrom);
-    arrowGroup.position.y += 0.35; // slightly above board
-
-    const up = new THREE.Vector3(0, 1, 0);
-    arrowGroup.quaternion.setFromUnitVectors(up, dir);
-
-    this.hintArrowMesh = arrowGroup;
-    this.scene.add(this.hintArrowMesh);
+    this.hintMesh = group;
+    this.scene.add(this.hintMesh);
   }
 
   public clearHint() {
-    if (this.hintArrowMesh) {
-      this.scene.remove(this.hintArrowMesh);
-      this.hintArrowMesh = null;
+    if (this.hintMesh) {
+      this.scene.remove(this.hintMesh);
+      this.hintMesh = null;
     }
   }
 
-  // --- THEME SETTINGS UPDATE ---
+  // --- THEME UPDATES ---
   public setTheme(pieceTheme: PieceTheme, boardTheme: BoardTheme, showCoords: boolean) {
     this.pieceTheme = pieceTheme;
     this.boardTheme = boardTheme;
     this.showCoordinates = showCoords;
 
-    this.buildBoardMesh();
-
-    // Re-apply materials to all existing pieces
+    this.buildBoard();
     for (const mesh of this.piecesMap.values()) {
       mesh.material = this.createPieceMaterial(mesh.userData.color);
     }
     this.refreshHighlights();
   }
 
-  // --- CAMERA PRESETS ---
-  public setCameraView(preset: 'perspective' | 'topdown' | 'white' | 'black') {
-    switch (preset) {
-      case 'perspective':
-        this.animateCamera(new THREE.Vector3(0, 9.2, 8.2), new THREE.Vector3(0, 0, 0));
-        break;
-      case 'topdown':
-        this.animateCamera(new THREE.Vector3(0, 13.5, 0.01), new THREE.Vector3(0, 0, 0));
-        break;
-      case 'white':
-        this.animateCamera(new THREE.Vector3(0, 8.0, 7.5), new THREE.Vector3(0, 0, 0));
-        break;
-      case 'black':
-        this.animateCamera(new THREE.Vector3(0, 8.0, -7.5), new THREE.Vector3(0, 0, 0));
-        break;
-    }
-  }
-
-  private animateCamera(targetPos: THREE.Vector3, lookTarget: THREE.Vector3) {
-    const startPos = this.camera.position.clone();
-    const startTime = performance.now();
-    const duration = 650;
-
-    const animStep = () => {
-      const elapsed = performance.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      // Smooth easeInOutCubic
-      const ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-
-      this.camera.position.lerpVectors(startPos, targetPos, ease);
-      this.controls.target.copy(lookTarget);
-      this.controls.update();
-
-      if (progress < 1) {
-        requestAnimationFrame(animStep);
-      }
-    };
-    animStep();
-  }
-
+  // --- FLIP BOARD ---
   public flipBoard(isFlipped: boolean) {
-    if (isFlipped) {
-      this.setCameraView('black');
+    this.isFlipped = isFlipped;
+    // Update all pieces to their new rotated positions
+    for (const [sq, mesh] of this.piecesMap.entries()) {
+      mesh.position.copy(this.squareToPosition(sq));
+    }
+    this.refreshHighlights();
+  }
+
+  // --- CAMERA MODES ---
+  public setCameraMode(mode: 'photo' | 'topdown' | 'free3d') {
+    if (mode === 'photo') {
+      this.camera.position.copy(this.PHOTO_CAMERA_POS);
+      this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
+    } else if (mode === 'topdown') {
+      this.camera.position.set(0, 15, 0.01);
+      this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
     } else {
-      this.setCameraView('white');
+      this.camera.position.set(0, 11, 6.5);
+      this.camera.lookAt(this.PHOTO_CAMERA_TARGET);
     }
   }
 
-  // --- INTERACTION & CLICK PICKING ---
-  private setupEvents() {
+  // --- ACCURATE SQUARE-BASED INTERACTIVITY & DRAG-AND-DROP ---
+  private setupInteractivity() {
     const dom = this.renderer.domElement;
 
-    let isDragging = false;
-    let downX = 0;
-    let downY = 0;
-
     dom.addEventListener('pointerdown', (e) => {
-      isDragging = false;
-      downX = e.clientX;
-      downY = e.clientY;
+      this.isPointerDown = true;
+      this.isDragging = false;
+      this.pointerDownCoord = { x: e.clientX, y: e.clientY };
+
+      const sq = this.getSquareFromPointer(e);
+      if (!sq) return;
+
+      const pieceMesh = this.piecesMap.get(sq);
+
+      // If clicked a square with legal move while a piece was selected, execute!
+      if (this.selectedSquare && this.legalMoves.includes(sq)) {
+        if (this.onMoveCallback) {
+          this.onMoveCallback(this.selectedSquare, sq);
+        }
+        return;
+      }
+
+      // If clicked a friendly piece, initiate drag & selection
+      if (pieceMesh) {
+        this.dragStartSquare = sq;
+        this.draggedMesh = pieceMesh;
+        this.dragStartPosition.copy(pieceMesh.position);
+
+        if (this.onSelectSquareCallback) {
+          this.onSelectSquareCallback(sq);
+        }
+      }
     });
 
     dom.addEventListener('pointermove', (e) => {
-      if (Math.abs(e.clientX - downX) > 6 || Math.abs(e.clientY - downY) > 6) {
-        isDragging = true;
+      if (!this.isPointerDown) return;
+
+      const dx = Math.abs(e.clientX - this.pointerDownCoord.x);
+      const dy = Math.abs(e.clientY - this.pointerDownCoord.y);
+
+      if (dx > 4 || dy > 4) {
+        this.isDragging = true;
+      }
+
+      // Smooth piece drag follow
+      if (this.isDragging && this.draggedMesh) {
+        const boardIntersect = this.getBoardIntersect(e);
+        if (boardIntersect) {
+          this.draggedMesh.position.x = boardIntersect.x;
+          this.draggedMesh.position.z = boardIntersect.z;
+          this.draggedMesh.position.y = 0.65; // elevated while dragged
+        }
       }
     });
 
-    dom.addEventListener('pointerup', (e) => {
-      if (!isDragging) {
-        this.handleClick(e);
+    const handlePointerUp = (e: PointerEvent) => {
+      if (!this.isPointerDown) return;
+      this.isPointerDown = false;
+
+      if (this.isDragging && this.draggedMesh && this.dragStartSquare) {
+        const dropSquare = this.getSquareFromPointer(e);
+
+        if (dropSquare && this.legalMoves.includes(dropSquare)) {
+          // Drop onto valid destination square!
+          const from = this.dragStartSquare;
+          this.draggedMesh = null;
+          this.dragStartSquare = null;
+          if (this.onMoveCallback) {
+            this.onMoveCallback(from, dropSquare);
+          }
+        } else {
+          // Snap back to start position
+          this.draggedMesh.position.copy(this.dragStartPosition);
+          this.draggedMesh = null;
+          this.dragStartSquare = null;
+        }
+      } else {
+        // Simple click without drag
+        if (this.draggedMesh) {
+          this.draggedMesh.position.copy(this.dragStartPosition);
+          this.draggedMesh = null;
+          this.dragStartSquare = null;
+        }
       }
-    });
+    };
+
+    dom.addEventListener('pointerup', handlePointerUp);
+    dom.addEventListener('pointercancel', handlePointerUp);
 
     window.addEventListener('resize', this.onResize.bind(this));
   }
 
-  private handleClick(e: MouseEvent) {
-    if (!this.onSquareClickCallback) return;
-
+  private getBoardIntersect(e: MouseEvent): THREE.Vector3 | null {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
-
-    // Raycast piece meshes
-    const pieceMeshes = Array.from(this.piecesMap.values());
-    const pieceIntersects = this.raycaster.intersectObjects(pieceMeshes, false);
-
-    if (pieceIntersects.length > 0) {
-      const clickedMesh = pieceIntersects[0].object as THREE.Mesh;
-      const sq = clickedMesh.userData.square as Square;
-      if (sq) {
-        this.onSquareClickCallback(sq);
-        return;
-      }
-    }
-
-    // Raycast board mesh
-    if (this.boardMesh) {
-      const boardIntersects = this.raycaster.intersectObject(this.boardMesh, false);
-      if (boardIntersects.length > 0) {
-        const point = boardIntersects[0].point;
-        const sq = this.positionToSquare(point);
-        if (sq) {
-          this.onSquareClickCallback(sq);
-        }
-      }
-    }
+    const target = new THREE.Vector3();
+    const hit = this.raycaster.ray.intersectPlane(this.boardPlane, target);
+    return hit ? target : null;
   }
 
-  public setOnSquareClick(cb: (square: Square) => void) {
-    this.onSquareClickCallback = cb;
+  private getSquareFromPointer(e: MouseEvent): Square | null {
+    const pt = this.getBoardIntersect(e);
+    if (!pt) return null;
+    return this.positionToSquare(pt);
+  }
+
+  public setCallbacks(
+    onSelect: (square: Square) => void,
+    onMove: (from: Square, to: Square) => void
+  ) {
+    this.onSelectSquareCallback = onSelect;
+    this.onMoveCallback = onMove;
   }
 
   private onResize() {
     if (!this.container) return;
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
-
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
   }
 
-  // --- ANIMATION LOOP ---
   private animate() {
     this.animationFrameId = requestAnimationFrame(this.animate);
 
-    // Update active move animations
-    const now = performance.now();
-    for (let i = this.activeMoveAnimations.length - 1; i >= 0; i--) {
-      const anim = this.activeMoveAnimations[i];
-      const progress = Math.min((now - anim.startTime) / anim.duration, 1);
-
-      // Smooth step
-      const ease = progress * progress * (3 - 2 * progress);
-
-      // Interpolate X & Z
-      anim.mesh.position.x = THREE.MathUtils.lerp(anim.startPos.x, anim.endPos.x, ease);
-      anim.mesh.position.z = THREE.MathUtils.lerp(anim.startPos.z, anim.endPos.z, ease);
-
-      // Parabolic jump arc for Y
-      const arcHeight = 0.75;
-      anim.mesh.position.y = anim.startPos.y + Math.sin(progress * Math.PI) * arcHeight;
-
-      if (progress >= 1) {
-        anim.onComplete();
-        this.activeMoveAnimations.splice(i, 1);
-      }
-    }
-
-    // Pulse check indicator if present
     if (this.checkMesh) {
-      const pulse = 0.65 + Math.sin(now * 0.007) * 0.25;
+      const pulse = 0.65 + Math.sin(performance.now() * 0.008) * 0.25;
       (this.checkMesh.material as THREE.MeshBasicMaterial).opacity = pulse;
     }
 
-    this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -777,7 +761,7 @@ export class ChessScene {
       cancelAnimationFrame(this.animationFrameId);
     }
     window.removeEventListener('resize', this.onResize.bind(this));
-    if (this.renderer && this.renderer.domElement && this.renderer.domElement.parentElement) {
+    if (this.renderer.domElement.parentElement) {
       this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);
     }
     this.renderer.dispose();

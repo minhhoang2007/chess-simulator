@@ -1,35 +1,26 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Chess, Square, PieceSymbol, Color, Move } from 'chess.js';
+import { Chess, Square, PieceSymbol, Color } from 'chess.js';
 import { BotProfile, CapturedPieces, EvaluationState, GameSettings, MoveRecord, TimeControl } from './types/chess';
-import { BOT_PROFILES, TRANSLATIONS } from './locales/i18n';
+import { CHESS_COM_BOTS, TRANSLATIONS } from './locales/i18n';
 import { ChessScene } from './three/ChessScene';
 import { stockfishEngine } from './engine/stockfishEngine';
 import { sounds } from './audio/soundEffects';
 import { EvaluationBar } from './components/EvaluationBar';
-import { MoveHistory } from './components/MoveHistory';
 import { CapturedPiecesView } from './components/CapturedPiecesView';
 import { BotSelectorModal } from './components/BotSelectorModal';
 import { PromotionModal } from './components/PromotionModal';
-import { SettingsModal } from './components/SettingsModal';
 import { GameOverModal } from './components/GameOverModal';
+import { MenuDrawer } from './components/MenuDrawer';
 import {
+  Menu,
   RotateCcw,
   Lightbulb,
-  FlipHorizontal,
-  Settings,
-  Flag,
-  PlusCircle,
-  Eye,
-  Bot,
-  User,
-  Timer as TimerIcon,
-  Volume2,
-  VolumeX,
-  Sparkles
+  Sparkles,
+  Timer as TimerIcon
 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  // Game Logic
+  // Chess engine
   const [chess] = useState<Chess>(() => new Chess());
   const [fen, setFen] = useState<string>(chess.fen());
   const [turn, setTurn] = useState<Color>('w');
@@ -38,23 +29,22 @@ export const App: React.FC = () => {
   const [winner, setWinner] = useState<Color | 'draw' | null>(null);
   const [gameOverReason, setGameOverReason] = useState<string>('');
   const [isBotThinking, setIsBotThinking] = useState<boolean>(false);
-  const [hintMove, setHintMove] = useState<{ from: Square; to: Square } | null>(null);
+  const [hintInfo, setHintInfo] = useState<{ from: Square; to: Square } | null>(null);
 
-  // Settings & Configuration
+  // Settings
   const [settings, setSettings] = useState<GameSettings>({
     language: 'vi',
-    pieceTheme: 'liquid-glass',
-    boardTheme: 'rustic-wood',
+    pieceTheme: 'classic-wood', // defaults to Classic Wood matching the user's reference photo!
+    boardTheme: 'rustic-wood',  // defaults to Rustic Wood matching the user's reference photo!
     soundEnabled: true,
     showCoordinates: true,
     showLegalMoves: true,
-    showBestMoveHint: true,
-    autoRotateOnTurn: false,
-    cameraView: 'perspective'
+    showEvaluationBar: true,
+    cameraTilt: 'photo'         // defaults to photo angle!
   });
 
-  // Bot & Match Setup
-  const [selectedBot, setSelectedBot] = useState<BotProfile>(BOT_PROFILES[2]); // 1200 Elo
+  // Bot & Match Config
+  const [selectedBot, setSelectedBot] = useState<BotProfile>(CHESS_COM_BOTS[2]); // Nelson (1300)
   const [playerColor, setPlayerColor] = useState<Color>('w');
   const [timeControl, setTimeControl] = useState<TimeControl>('unlimited');
   const [whiteTime, setWhiteTime] = useState<number>(300);
@@ -65,9 +55,9 @@ export const App: React.FC = () => {
   const [capturedPieces, setCapturedPieces] = useState<CapturedPieces>({ w: [], b: [] });
   const [evaluation, setEvaluation] = useState<EvaluationState>({ type: 'cp', value: 0 });
 
-  // Modals
+  // Modals & UI Drawers
+  const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState<boolean>(false);
   const [isBotModalOpen, setIsBotModalOpen] = useState<boolean>(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
   const [isGameOverModalOpen, setIsGameOverModalOpen] = useState<boolean>(false);
   const [isResignConfirmOpen, setIsResignConfirmOpen] = useState<boolean>(false);
@@ -76,6 +66,7 @@ export const App: React.FC = () => {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<ChessScene | null>(null);
   const selectedSquareRef = useRef<Square | null>(null);
+  const [isFlipped, setIsFlipped] = useState<boolean>(false);
 
   const t = TRANSLATIONS[settings.language];
 
@@ -87,20 +78,21 @@ export const App: React.FC = () => {
     sceneRef.current = scene;
 
     scene.setTheme(settings.pieceTheme, settings.boardTheme, settings.showCoordinates);
+    scene.setCameraMode(settings.cameraTilt);
     scene.updateBoard(chess);
 
-    // Click handler for 3D board
-    scene.setOnSquareClick((square: Square) => {
-      handleSquareClick(square);
-    });
+    // Callbacks for piece selection and moves
+    scene.setCallbacks(
+      (square: Square) => handleSquareSelect(square),
+      (from: Square, to: Square) => handleMoveAttempt(from, to)
+    );
 
-    // Realtime evaluation listener from Stockfish
+    // Live Stockfish Evaluation
     stockfishEngine.setEvaluationListener((ev) => {
-      // Invert if it's black's turn to keep relative to White
-      const sideMultiplier = chess.turn() === 'w' ? 1 : -1;
+      const mult = chess.turn() === 'w' ? 1 : -1;
       setEvaluation({
         type: ev.type,
-        value: ev.value * sideMultiplier
+        value: ev.value * mult
       });
     });
 
@@ -110,20 +102,19 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Update sound synthesizer state
+  // Sync settings
   useEffect(() => {
     sounds.setEnabled(settings.soundEnabled);
   }, [settings.soundEnabled]);
 
-  // Sync scene themes
   useEffect(() => {
     if (sceneRef.current) {
       sceneRef.current.setTheme(settings.pieceTheme, settings.boardTheme, settings.showCoordinates);
-      sceneRef.current.setCameraView(settings.cameraView);
+      sceneRef.current.setCameraMode(settings.cameraTilt);
     }
-  }, [settings.pieceTheme, settings.boardTheme, settings.showCoordinates, settings.cameraView]);
+  }, [settings.pieceTheme, settings.boardTheme, settings.showCoordinates, settings.cameraTilt]);
 
-  // 2. Timer Countdown Effect
+  // 2. Timer Countdown
   useEffect(() => {
     if (timeControl === 'unlimited' || isGameOver || moveHistory.length === 0) return;
 
@@ -150,109 +141,79 @@ export const App: React.FC = () => {
     return () => clearInterval(timer);
   }, [turn, isGameOver, timeControl, moveHistory.length]);
 
-  const handleTimeLoss = (loserColor: Color) => {
+  const handleTimeLoss = (loser: Color) => {
     setIsGameOver(true);
-    const winColor = loserColor === 'w' ? 'b' : 'w';
-    setWinner(winColor);
-    setGameOverReason(settings.language === 'vi' ? 'Hết thời gian thi đấu!' : 'Flagged on time!');
+    const win = loser === 'w' ? 'b' : 'w';
+    setWinner(win);
+    setGameOverReason(settings.language === 'vi' ? 'Hết giờ thi đấu!' : 'Flagged on time!');
     setIsGameOverModalOpen(true);
-    if (winColor === playerColor) {
-      sounds.playVictory();
+    if (win === playerColor) sounds.playVictory();
+    else sounds.playDefeat();
+  };
+
+  // 3. User Selects a Piece / Square
+  const handleSquareSelect = (square: Square) => {
+    if (isGameOver || isBotThinking || chess.turn() !== playerColor) return;
+
+    const piece = chess.get(square);
+    if (piece && piece.color === playerColor) {
+      selectedSquareRef.current = square;
+      const moves = chess.moves({ square, verbose: true });
+      const targets = moves.map((m) => m.to);
+      sceneRef.current?.setSelection(square, targets);
     } else {
-      sounds.playDefeat();
+      selectedSquareRef.current = null;
+      sceneRef.current?.setSelection(null, []);
     }
   };
 
-  // 3. User Move Handling
-  const handleSquareClick = (square: Square) => {
-    if (isGameOver || isBotThinking) return;
+  // 4. User Moves or Drops Piece
+  const handleMoveAttempt = (from: Square, to: Square) => {
+    if (isGameOver || isBotThinking || chess.turn() !== playerColor) return;
 
-    // Disallow moving bot's pieces
-    if (chess.turn() !== playerColor) return;
-
-    const currentSelected = selectedSquareRef.current;
-
-    if (!currentSelected) {
-      // Trying to select a piece
-      const piece = chess.get(square);
-      if (piece && piece.color === playerColor) {
-        selectedSquareRef.current = square;
-        const moves = chess.moves({ square, verbose: true });
-        const legalDestinations = moves.map((m) => m.to);
-        sceneRef.current?.setSelection(square, legalDestinations);
-      }
-      return;
-    }
-
-    // A piece is already selected
-    if (currentSelected === square) {
-      // Deselect
-      selectedSquareRef.current = null;
-      sceneRef.current?.setSelection(null, []);
-      return;
-    }
-
-    // Check if clicking another friendly piece
-    const targetPiece = chess.get(square);
-    if (targetPiece && targetPiece.color === playerColor) {
-      selectedSquareRef.current = square;
-      const moves = chess.moves({ square, verbose: true });
-      const legalDestinations = moves.map((m) => m.to);
-      sceneRef.current?.setSelection(square, legalDestinations);
-      return;
-    }
-
-    // Check if legal move
-    const moves = chess.moves({ square: currentSelected, verbose: true });
-    const targetMove = moves.find((m) => m.to === square);
+    const moves = chess.moves({ square: from, verbose: true });
+    const targetMove = moves.find((m) => m.to === to);
 
     if (targetMove) {
-      // Check if pawn promotion
+      // Check for promotion
       if (
         targetMove.piece === 'p' &&
-        ((targetMove.color === 'w' && square[1] === '8') || (targetMove.color === 'b' && square[1] === '1'))
+        ((targetMove.color === 'w' && to[1] === '8') || (targetMove.color === 'b' && to[1] === '1'))
       ) {
-        setPendingPromotion({ from: currentSelected, to: square });
+        setPendingPromotion({ from, to });
         return;
       }
 
-      executeMove(currentSelected, square);
+      applyMove(from, to);
     } else {
-      // Invalid destination
       selectedSquareRef.current = null;
       sceneRef.current?.setSelection(null, []);
     }
   };
 
-  const handlePromotionSelect = (promotedPiece: PieceSymbol) => {
+  const handlePromotionSelect = (promoted: PieceSymbol) => {
     if (pendingPromotion) {
-      executeMove(pendingPromotion.from, pendingPromotion.to, promotedPiece);
+      applyMove(pendingPromotion.from, pendingPromotion.to, promoted);
       setPendingPromotion(null);
     }
   };
 
-  // 4. Execute Move on Board
-  const executeMove = (from: Square, to: Square, promotion?: PieceSymbol) => {
+  // 5. Apply Move
+  const applyMove = (from: Square, to: Square, promotion?: PieceSymbol) => {
     try {
-      const moveResult = chess.move({
-        from,
-        to,
-        promotion: promotion || 'q'
-      });
+      const result = chess.move({ from, to, promotion: promotion || 'q' });
+      if (!result) return;
 
-      if (!moveResult) return;
-
-      // Clear selection & hint
       selectedSquareRef.current = null;
       sceneRef.current?.setSelection(null, []);
       sceneRef.current?.setLastMove(from, to);
       sceneRef.current?.clearHint();
-      setHintMove(null);
+      setHintInfo(null);
 
-      // Play appropriate sound
-      if (moveResult.captured) {
+      // Play sound
+      if (result.captured) {
         sounds.playCapture();
-      } else if (moveResult.san.includes('O-O')) {
+      } else if (result.san.includes('O-O')) {
         sounds.playCastle();
       } else if (chess.inCheck()) {
         sounds.playCheck();
@@ -265,80 +226,66 @@ export const App: React.FC = () => {
         sceneRef.current?.updateBoard(chess);
       });
 
-      // Update state
+      // Update states
       setFen(chess.fen());
       setTurn(chess.turn());
       setInCheck(chess.inCheck());
 
-      // Track move record
-      const record: MoveRecord = {
-        san: moveResult.san,
-        from: moveResult.from,
-        to: moveResult.to,
-        color: moveResult.color,
-        piece: moveResult.piece,
-        captured: moveResult.captured,
-        promotion: moveResult.promotion as PieceSymbol,
-        fen: chess.fen()
+      const rec: MoveRecord = {
+        san: result.san,
+        from: result.from,
+        to: result.to,
+        color: result.color,
+        piece: result.piece,
+        captured: result.captured,
+        promotion: result.promotion as PieceSymbol,
+        fen: chess.fen(),
+        moveNumber: Math.floor(moveHistory.length / 2) + 1
       };
-      setMoveHistory((prev) => [...prev, record]);
+      setMoveHistory((prev) => [...prev, rec]);
 
-      // Track captured pieces
-      if (moveResult.captured) {
+      if (result.captured) {
         setCapturedPieces((prev) => {
-          const key = moveResult.color === 'w' ? 'w' : 'b';
-          return {
-            ...prev,
-            [key]: [...prev[key], moveResult.captured as PieceSymbol]
-          };
+          const key = result.color === 'w' ? 'w' : 'b';
+          return { ...prev, [key]: [...prev[key], result.captured as PieceSymbol] };
         });
       }
 
-      // Trigger background evaluation
       stockfishEngine.evaluatePosition(chess.fen());
+      checkGameEnd();
 
-      // Check game over
-      checkGameStatus();
-
-      // Trigger Bot turn if game continues
       if (!chess.isGameOver() && chess.turn() !== playerColor) {
-        triggerBotMove();
+        triggerBot();
       }
     } catch (err) {
-      console.error('Move execution error:', err);
+      console.error('Error applying move:', err);
     }
   };
 
-  // 5. Bot Move Logic
-  const triggerBotMove = useCallback(() => {
+  // 6. Bot Move Execution
+  const triggerBot = useCallback(() => {
     setIsBotThinking(true);
 
-    stockfishEngine.getBestMove(chess, selectedBot, (result) => {
+    stockfishEngine.getBestMove(chess, selectedBot, (best) => {
       setIsBotThinking(false);
-
       if (chess.isGameOver()) return;
 
       try {
-        const moveResult = chess.move({
-          from: result.from,
-          to: result.to,
-          promotion: result.promotion || 'q'
+        const moveRes = chess.move({
+          from: best.from,
+          to: best.to,
+          promotion: best.promotion || 'q'
         });
 
-        if (moveResult) {
-          sceneRef.current?.setLastMove(result.from, result.to);
+        if (moveRes) {
+          sceneRef.current?.setLastMove(best.from, best.to);
 
-          if (moveResult.captured) {
-            sounds.playCapture();
-          } else if (moveResult.san.includes('O-O')) {
-            sounds.playCastle();
-          } else if (chess.inCheck()) {
-            sounds.playCheck();
-          } else {
-            sounds.playMove();
-          }
+          if (moveRes.captured) sounds.playCapture();
+          else if (moveRes.san.includes('O-O')) sounds.playCastle();
+          else if (chess.inCheck()) sounds.playCheck();
+          else sounds.playMove();
 
-          sceneRef.current?.animateMove(result.from, result.to, () => {
+          sceneRef.current?.animateMove(best.from, best.to, () => {
             sceneRef.current?.updateBoard(chess);
           });
 
@@ -346,50 +293,45 @@ export const App: React.FC = () => {
           setTurn(chess.turn());
           setInCheck(chess.inCheck());
 
-          const record: MoveRecord = {
-            san: moveResult.san,
-            from: moveResult.from,
-            to: moveResult.to,
-            color: moveResult.color,
-            piece: moveResult.piece,
-            captured: moveResult.captured,
-            promotion: moveResult.promotion as PieceSymbol,
-            fen: chess.fen()
+          const rec: MoveRecord = {
+            san: moveRes.san,
+            from: moveRes.from,
+            to: moveRes.to,
+            color: moveRes.color,
+            piece: moveRes.piece,
+            captured: moveRes.captured,
+            promotion: moveRes.promotion as PieceSymbol,
+            fen: chess.fen(),
+            moveNumber: Math.floor(moveHistory.length / 2) + 1
           };
-          setMoveHistory((prev) => [...prev, record]);
+          setMoveHistory((prev) => [...prev, rec]);
 
-          if (moveResult.captured) {
+          if (moveRes.captured) {
             setCapturedPieces((prev) => {
-              const key = moveResult.color === 'w' ? 'w' : 'b';
-              return {
-                ...prev,
-                [key]: [...prev[key], moveResult.captured as PieceSymbol]
-              };
+              const key = moveRes.color === 'w' ? 'w' : 'b';
+              return { ...prev, [key]: [...prev[key], moveRes.captured as PieceSymbol] };
             });
           }
 
           stockfishEngine.evaluatePosition(chess.fen());
-          checkGameStatus();
+          checkGameEnd();
         }
       } catch (e) {
-        console.error('Error executing bot move:', e);
+        console.error('Bot execution error:', e);
       }
     });
-  }, [chess, selectedBot, playerColor]);
+  }, [chess, selectedBot, playerColor, moveHistory.length]);
 
-  // 6. Check Game Status
-  const checkGameStatus = () => {
+  // 7. Check Game Over
+  const checkGameEnd = () => {
     if (chess.isCheckmate()) {
       setIsGameOver(true);
-      const winColor = chess.turn() === 'w' ? 'b' : 'w';
-      setWinner(winColor);
+      const win = chess.turn() === 'w' ? 'b' : 'w';
+      setWinner(win);
       setGameOverReason(t.checkmate);
       setIsGameOverModalOpen(true);
-      if (winColor === playerColor) {
-        sounds.playVictory();
-      } else {
-        sounds.playDefeat();
-      }
+      if (win === playerColor) sounds.playVictory();
+      else sounds.playDefeat();
     } else if (chess.isStalemate()) {
       setIsGameOver(true);
       setWinner('draw');
@@ -413,34 +355,31 @@ export const App: React.FC = () => {
     }
   };
 
-  // 7. Restart / Start Game
-  const startNewGame = (bot?: BotProfile, color?: Color, tc?: TimeControl) => {
+  // 8. New Game / Restart
+  const handleStartGame = (bot?: BotProfile, col?: Color, tc?: TimeControl) => {
     chess.reset();
     selectedSquareRef.current = null;
 
     const newBot = bot || selectedBot;
-    const newColor = color || playerColor;
+    const newCol = col || playerColor;
     const newTc = tc || timeControl;
 
     setSelectedBot(newBot);
-    setPlayerColor(newColor);
+    setPlayerColor(newCol);
     setTimeControl(newTc);
 
-    // Reset clocks
-    const initialTime = newTc === 'unlimited' ? 300 : parseInt(newTc, 10);
-    setWhiteTime(initialTime);
-    setBlackTime(initialTime);
+    const initTime = newTc === 'unlimited' ? 300 : parseInt(newTc, 10);
+    setWhiteTime(initTime);
+    setBlackTime(initTime);
 
-    // Reset board
     sceneRef.current?.setSelection(null, []);
     sceneRef.current?.setLastMove(null, null);
     sceneRef.current?.clearHint();
-    sceneRef.current?.updateBoard(chess);
 
-    // Flip board view if player is Black
-    if (sceneRef.current) {
-      sceneRef.current.flipBoard(newColor === 'b');
-    }
+    const flipped = newCol === 'b';
+    setIsFlipped(flipped);
+    sceneRef.current?.flipBoard(flipped);
+    sceneRef.current?.updateBoard(chess);
 
     setFen(chess.fen());
     setTurn(chess.turn());
@@ -451,25 +390,20 @@ export const App: React.FC = () => {
     setMoveHistory([]);
     setCapturedPieces({ w: [], b: [] });
     setEvaluation({ type: 'cp', value: 0 });
-    setHintMove(null);
+    setHintInfo(null);
 
     setIsBotModalOpen(false);
     setIsGameOverModalOpen(false);
 
-    // If player is Black, bot plays first
-    if (newColor === 'b') {
-      setTimeout(() => {
-        triggerBotMove();
-      }, 500);
+    if (newCol === 'b') {
+      setTimeout(() => triggerBot(), 500);
     }
   };
 
-  // 8. Undo Move (take back 2 half-moves so it returns to player's turn)
+  // 9. Undo Move
   const handleUndo = () => {
     if (isGameOver || isBotThinking || moveHistory.length === 0) return;
 
-    // If bot is thinking, cancel
-    // Undo once if bot's turn, twice if player's turn to restore to player
     const undos = chess.turn() === playerColor ? 2 : 1;
     for (let i = 0; i < undos; i++) {
       chess.undo();
@@ -484,58 +418,49 @@ export const App: React.FC = () => {
     setTurn(chess.turn());
     setInCheck(chess.inCheck());
     setMoveHistory((prev) => prev.slice(0, Math.max(0, prev.length - undos)));
-    setHintMove(null);
+    setHintInfo(null);
 
-    // Rebuild captured pieces
-    rebuildCapturedPieces();
+    // Rebuild captured
+    const wCaptures: PieceSymbol[] = [];
+    const bCaptures: PieceSymbol[] = [];
+    const full: PieceSymbol[] = ['p','p','p','p','p','p','p','p','r','r','n','n','b','b','q','k'];
+    const wRem: PieceSymbol[] = [...full];
+    const bRem: PieceSymbol[] = [...full];
+    chess.board().forEach((row) => {
+      row.forEach((sq) => {
+        if (sq) {
+          const list = sq.color === 'w' ? wRem : bRem;
+          const idx = list.indexOf(sq.type);
+          if (idx > -1) list.splice(idx, 1);
+        }
+      });
+    });
+    setCapturedPieces({
+      w: bRem.filter((p): p is PieceSymbol => p !== 'k'),
+      b: wRem.filter((p): p is PieceSymbol => p !== 'k')
+    });
+
     stockfishEngine.evaluatePosition(chess.fen());
   };
 
-  const rebuildCapturedPieces = () => {
-    const fullWhite: PieceSymbol[] = ['p','p','p','p','p','p','p','p','r','r','n','n','b','b','q','k'];
-    const fullBlack: PieceSymbol[] = ['p','p','p','p','p','p','p','p','r','r','n','n','b','b','q','k'];
-
-    const board = chess.board();
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        const piece = board[r][c];
-        if (piece) {
-          if (piece.color === 'w') {
-            const idx = fullWhite.indexOf(piece.type);
-            if (idx > -1) fullWhite.splice(idx, 1);
-          } else {
-            const idx = fullBlack.indexOf(piece.type);
-            if (idx > -1) fullBlack.splice(idx, 1);
-          }
-        }
-      }
-    }
-    // fullBlack remaining were captured by White
-    setCapturedPieces({
-      w: fullBlack.filter((p) => p !== 'k'),
-      b: fullWhite.filter((p) => p !== 'k')
-    });
+  // 10. Flip Board
+  const handleFlip = () => {
+    const next = !isFlipped;
+    setIsFlipped(next);
+    sceneRef.current?.flipBoard(next);
   };
 
-  // 9. Hint Feature
-  const handleGetHint = () => {
+  // 11. Hint
+  const handleHint = () => {
     if (isGameOver || isBotThinking || chess.turn() !== playerColor) return;
 
-    stockfishEngine.getBestMove(chess, BOT_PROFILES[5], (result) => {
-      setHintMove({ from: result.from, to: result.to });
-      sceneRef.current?.showHint(result.from, result.to);
+    stockfishEngine.getBestMove(chess, CHESS_COM_BOTS[5], (res) => {
+      setHintInfo({ from: res.from, to: res.to });
+      sceneRef.current?.showHint(res.from, res.to);
     });
   };
 
-  // 10. Flip Board
-  const [isFlipped, setIsFlipped] = useState<boolean>(playerColor === 'b');
-  const handleFlipBoard = () => {
-    const newFlip = !isFlipped;
-    setIsFlipped(newFlip);
-    sceneRef.current?.flipBoard(newFlip);
-  };
-
-  // 11. Resign
+  // 12. Resign
   const handleResign = () => {
     setIsResignConfirmOpen(true);
   };
@@ -543,268 +468,185 @@ export const App: React.FC = () => {
   const confirmResign = () => {
     setIsResignConfirmOpen(false);
     setIsGameOver(true);
-    const winColor = playerColor === 'w' ? 'b' : 'w';
-    setWinner(winColor);
-    setGameOverReason(settings.language === 'vi' ? 'Bạn đã chấp nhận đầu hàng.' : 'Player resigned.');
+    const win = playerColor === 'w' ? 'b' : 'w';
+    setWinner(win);
+    setGameOverReason(settings.language === 'vi' ? 'Bạn đã chịu thua.' : 'Player resigned.');
     setIsGameOverModalOpen(true);
     sounds.playDefeat();
   };
 
-  // Format clock mm:ss
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
+  // Current turn text for bottom bezel (matches reference photo: "1. White's move")
+  const currentMoveNumber = Math.floor(moveHistory.length / 2) + 1;
+  const currentMoveText = turn === 'w'
+    ? t.whitesMoveText.replace('{num}', currentMoveNumber.toString())
+    : t.blacksMoveText.replace('{num}', currentMoveNumber.toString());
+
+  const formatClock = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-neutral-950 text-neutral-100 select-none">
-      {/* Top Navigation Bar */}
-      <header className="relative z-20 flex items-center justify-between px-4 py-2.5 glass-panel border-b border-white/10 bg-neutral-950/70">
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center font-serif-luxury text-neutral-950 text-xl font-black shadow-[0_0_15px_rgba(245,158,11,0.5)]">
-            ♔
-          </div>
-          <div>
-            <h1 className="text-sm font-black font-serif-luxury tracking-wider text-white">
-              {t.appTitle}
-            </h1>
-            <p className="text-[10px] text-amber-300 font-medium">
-              {t.appSubtitle}
-            </p>
-          </div>
-        </div>
+    <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#140e0a] text-[#ede8e1] select-none font-sans">
+      {/* 3D Viewport (Full Screen Canvas) */}
+      <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full cursor-pointer" />
 
-        {/* Center Opponent Status */}
-        <div className="hidden md:flex items-center gap-3 glass-panel-subtle px-4 py-1.5 rounded-full border border-white/10">
-          <div className="text-xl">{selectedBot.avatar}</div>
-          <div className="text-left">
-            <div className="text-xs font-bold text-white flex items-center gap-2">
-              <span>{selectedBot.name[settings.language]}</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.2 bg-amber-400/20 text-amber-300 rounded border border-amber-400/30">
-                {selectedBot.elo} {t.elo}
-              </span>
-            </div>
-            <div className="text-[10px] text-neutral-400">
-              {isBotThinking ? (
-                <span className="text-amber-300 animate-pulse flex items-center gap-1">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-                  {t.thinking}
-                </span>
-              ) : inCheck ? (
-                <span className="text-rose-400 font-bold">{t.check}</span>
-              ) : turn === playerColor ? (
-                <span className="text-emerald-400">{t.yourTurn}</span>
-              ) : (
-                <span className="text-neutral-400">{t.botTurn}</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Action Icons */}
-        <div className="flex items-center gap-2">
-          {/* Language Switch */}
-          <button
-            onClick={() => setSettings((s) => ({ ...s, language: s.language === 'vi' ? 'en' : 'vi' }))}
-            className="glass-button px-2.5 py-1.5 rounded-lg text-xs font-bold text-neutral-200 hover:text-white flex items-center gap-1.5"
-            title="Đổi ngôn ngữ / Change Language"
-          >
-            <span>{settings.language === 'vi' ? '🇻🇳 VI' : '🇬🇧 EN'}</span>
-          </button>
-
-          {/* Sound Toggle */}
-          <button
-            onClick={() => setSettings((s) => ({ ...s, soundEnabled: !s.soundEnabled }))}
-            className="glass-button p-2 rounded-lg text-neutral-300 hover:text-white"
-            title={t.sound}
-          >
-            {settings.soundEnabled ? <Volume2 className="w-4 h-4 text-amber-400" /> : <VolumeX className="w-4 h-4 text-neutral-500" />}
-          </button>
-
-          {/* Bot Selector */}
-          <button
-            onClick={() => setIsBotModalOpen(true)}
-            className="glass-button px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-300 flex items-center gap-1.5 hover:bg-amber-400/20"
-          >
-            <Bot className="w-4 h-4" />
-            <span className="hidden sm:inline">{t.selectBot}</span>
-          </button>
-
-          {/* Settings */}
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="glass-button p-2 rounded-lg text-neutral-300 hover:text-white"
-            title={t.settings}
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content Area: 3D Viewport + Floating Chess HUD */}
-      <div className="relative flex-1 w-full h-full overflow-hidden">
-        {/* 3D Canvas Container */}
-        <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing" />
-
-        {/* Top Floating Mobile Status (visible on smaller screens) */}
-        <div className="md:hidden absolute top-3 left-3 right-3 z-10 flex items-center justify-between glass-panel p-2 rounded-xl text-xs">
-          <div className="flex items-center gap-2">
-            <span>{selectedBot.avatar}</span>
-            <span className="font-bold">{selectedBot.name[settings.language]}</span>
-            <span className="font-mono text-[10px] text-amber-300">{selectedBot.elo} Elo</span>
-          </div>
-          <div>
-            {isBotThinking ? (
-              <span className="text-amber-400 animate-pulse">{t.thinking}</span>
-            ) : inCheck ? (
-              <span className="text-rose-400 font-bold">{t.check}</span>
-            ) : (
-              <span className={turn === playerColor ? 'text-emerald-400' : 'text-neutral-400'}>
-                {turn === playerColor ? t.yourTurn : t.botTurn}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Left Floating Controls Bar (matches user reference image layout!) */}
-        <div className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-3">
-          {/* Evaluation Bar */}
+      {/* Floating Evaluation Bar on Left Edge */}
+      {settings.showEvaluationBar && (
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
           <EvaluationBar evaluation={evaluation} language={settings.language} />
         </div>
+      )}
 
-        {/* Right Floating Quick Tools Bar (Undo, Flip, Hint, Camera, Resign) */}
-        <div className="absolute right-3 md:right-5 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-2.5">
-          {/* Flip Board */}
-          <button
-            onClick={handleFlipBoard}
-            className="glass-button p-3 rounded-2xl shadow-xl flex items-center justify-center group"
-            title={t.flipBoard}
-          >
-            <FlipHorizontal className="w-5 h-5 text-neutral-300 group-hover:text-amber-300 transition-colors" />
-          </button>
+      {/* TOP-LEFT FLOATING CORNER CONTROLS (matches reference image: Menu ☰ & Flip ↻) */}
+      <div className="absolute top-4 left-4 z-30 flex flex-col gap-3">
+        {/* Menu Button */}
+        <button
+          onClick={() => setIsMenuDrawerOpen(true)}
+          className="w-11 h-11 rounded-lg bg-[#241a13]/85 hover:bg-[#38281d] border border-[#543c2c]/80 text-[#ede8e1] flex items-center justify-center shadow-2xl backdrop-blur-sm transition-all hover:scale-105 active:scale-95"
+          title={t.menu}
+        >
+          <Menu className="w-6 h-6 text-[#f5ebd9]" />
+        </button>
 
-          {/* Undo Move */}
-          <button
-            onClick={handleUndo}
-            disabled={moveHistory.length === 0 || isBotThinking || isGameOver}
-            className="glass-button p-3 rounded-2xl shadow-xl flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none group"
-            title={t.undo}
-          >
-            <RotateCcw className="w-5 h-5 text-neutral-300 group-hover:text-amber-300 transition-colors" />
-          </button>
+        {/* Flip Board Button */}
+        <button
+          onClick={handleFlip}
+          className="w-11 h-11 rounded-lg bg-[#241a13]/85 hover:bg-[#38281d] border border-[#543c2c]/80 text-[#ede8e1] flex items-center justify-center shadow-2xl backdrop-blur-sm transition-all hover:scale-105 active:scale-95 text-lg font-bold"
+          title={t.flipBoard}
+        >
+          ↻
+        </button>
+      </div>
 
-          {/* Hint */}
-          <button
-            onClick={handleGetHint}
-            disabled={isBotThinking || isGameOver || turn !== playerColor}
-            className="glass-button p-3 rounded-2xl shadow-xl flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none group relative"
-            title={t.hint}
-          >
-            <Lightbulb className="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform" />
-          </button>
+      {/* TOP-RIGHT FLOATING CORNER CONTROLS (matches reference image: Undo ↶, Piece theme, Hint 💡) */}
+      <div className="absolute top-4 right-4 z-30 flex flex-col gap-3 items-end">
+        {/* Undo Button */}
+        <button
+          onClick={handleUndo}
+          disabled={moveHistory.length === 0 || isBotThinking || isGameOver}
+          className="w-11 h-11 rounded-lg bg-[#241a13]/85 hover:bg-[#38281d] border border-[#543c2c]/80 text-[#ede8e1] flex items-center justify-center shadow-2xl backdrop-blur-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:pointer-events-none text-xl font-bold"
+          title={t.undo}
+        >
+          ↶
+        </button>
 
-          {/* Camera View Switcher */}
-          <button
-            onClick={() => {
-              const presets: ('perspective' | 'topdown' | 'white' | 'black')[] = ['perspective', 'topdown', 'white', 'black'];
-              const curIdx = presets.indexOf(settings.cameraView);
-              const nextPreset = presets[(curIdx + 1) % presets.length];
-              setSettings((s) => ({ ...s, cameraView: nextPreset }));
-            }}
-            className="glass-button p-3 rounded-2xl shadow-xl flex items-center justify-center group"
-            title={t.cameraPresets}
-          >
-            <Eye className="w-5 h-5 text-sky-400 group-hover:scale-110 transition-transform" />
-          </button>
+        {/* Piece Theme Toggle (quick toggle between Classic Wood & Liquid Glass!) */}
+        <button
+          onClick={() => {
+            const nextTheme = settings.pieceTheme === 'classic-wood' ? 'liquid-glass' : 'classic-wood';
+            setSettings((s) => ({ ...s, pieceTheme: nextTheme }));
+          }}
+          className="w-11 h-11 rounded-lg bg-[#241a13]/85 hover:bg-[#38281d] border border-[#543c2c]/80 text-[#ede8e1] flex items-center justify-center shadow-2xl backdrop-blur-sm transition-all hover:scale-105 active:scale-95"
+          title={settings.pieceTheme === 'classic-wood' ? 'Chuyển sang Thủy Tinh Lỏng' : 'Chuyển sang Gỗ Cổ Điển'}
+        >
+          <span className="text-xl">
+            {settings.pieceTheme === 'classic-wood' ? '♙' : '💎'}
+          </span>
+        </button>
 
-          {/* Resign Button */}
-          <button
-            onClick={handleResign}
-            disabled={isGameOver || moveHistory.length === 0}
-            className="glass-button p-3 rounded-2xl shadow-xl flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none group"
-            title={t.resign}
-          >
-            <Flag className="w-5 h-5 text-rose-400 group-hover:scale-110 transition-transform" />
-          </button>
+        {/* Hint Lightbulb Button */}
+        <button
+          onClick={handleHint}
+          disabled={isBotThinking || isGameOver || chess.turn() !== playerColor}
+          className="w-11 h-11 rounded-lg bg-[#241a13]/85 hover:bg-[#38281d] border border-[#543c2c]/80 text-[#ede8e1] flex items-center justify-center shadow-2xl backdrop-blur-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+          title={t.hint}
+        >
+          <Lightbulb className="w-5 h-5 text-[#f59e0b]" />
+        </button>
+      </div>
 
-          {/* New Game */}
-          <button
-            onClick={() => setIsBotModalOpen(true)}
-            className="glass-button p-3 rounded-2xl shadow-xl flex items-center justify-center group bg-amber-400/20 border-amber-400/40"
-            title={t.newGame}
-          >
-            <PlusCircle className="w-5 h-5 text-amber-300 group-hover:scale-110 transition-transform" />
-          </button>
-        </div>
-
-        {/* Bottom Floating Info Dock: Players, Captured Pieces, Clocks & Notation */}
-        <div className="absolute bottom-3 left-3 right-3 md:left-16 md:right-16 z-10 flex flex-col md:flex-row items-stretch md:items-end justify-between gap-3 pointer-events-none">
-          {/* Left Player Info Box (Player & Bot cards) */}
-          <div className="pointer-events-auto flex flex-col gap-2">
-            {/* Opponent (Bot) Card */}
-            <div className="glass-panel px-3 py-2 rounded-xl flex items-center gap-3 border border-white/10 max-w-xs shadow-lg">
-              <div className="text-2xl">{selectedBot.avatar}</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-neutral-200 truncate">
-                  {selectedBot.name[settings.language]}
-                </div>
-                <CapturedPiecesView
-                  captured={capturedPieces}
-                  color={playerColor === 'w' ? 'b' : 'w'}
-                />
-              </div>
-              {timeControl !== 'unlimited' && (
-                <div className="font-mono text-sm font-bold px-2 py-1 rounded bg-black/40 border border-white/10 text-neutral-300 flex items-center gap-1">
-                  <TimerIcon className="w-3.5 h-3.5 text-neutral-400" />
-                  <span>{formatTime(playerColor === 'w' ? blackTime : whiteTime)}</span>
-                </div>
-              )}
+      {/* Opponent Card Top (Subtle Chess.com style, visible above board) */}
+      <div className="absolute top-4 left-20 right-20 z-20 pointer-events-none flex justify-center">
+        <div className="pointer-events-auto flex items-center gap-3 px-3.5 py-1.5 rounded-lg bg-[#1f1610]/80 border border-[#3d2b1e] backdrop-blur-sm shadow-lg text-xs">
+          <span className="text-xl">{selectedBot.avatar}</span>
+          <div>
+            <div className="font-bold text-white flex items-center gap-1.5">
+              <span>{selectedBot.name}</span>
+              <span className="text-[10px] font-mono text-[#f59e0b]">({selectedBot.elo})</span>
             </div>
-
-            {/* User Player Card */}
-            <div className="glass-panel px-3 py-2 rounded-xl flex items-center gap-3 border border-white/10 max-w-xs shadow-lg">
-              <div className="w-7 h-7 rounded-lg bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-300">
-                <User className="w-4 h-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-amber-200 truncate">
-                  {playerColor === 'w' ? t.whitePlayer : t.blackPlayer}
-                </div>
-                <CapturedPiecesView
-                  captured={capturedPieces}
-                  color={playerColor}
-                />
-              </div>
-              {timeControl !== 'unlimited' && (
-                <div className="font-mono text-sm font-bold px-2 py-1 rounded bg-black/40 border border-white/10 text-amber-300 flex items-center gap-1">
-                  <TimerIcon className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{formatTime(playerColor === 'w' ? whiteTime : blackTime)}</span>
-                </div>
-              )}
-            </div>
+            <CapturedPiecesView captured={capturedPieces} color={playerColor === 'w' ? 'b' : 'w'} />
           </div>
-
-          {/* Hint Banner if active */}
-          {hintMove && (
-            <div className="pointer-events-auto self-center glass-panel px-4 py-2 rounded-xl border border-sky-400/40 text-xs font-semibold text-sky-200 shadow-xl flex items-center gap-2 animate-bounce">
-              <Sparkles className="w-4 h-4 text-sky-300" />
-              <span>
-                {t.hintText.replace('{from}', hintMove.from.toUpperCase()).replace('{to}', hintMove.to.toUpperCase())}
-              </span>
+          {isBotThinking && (
+            <span className="text-[11px] font-semibold text-[#f59e0b] animate-pulse flex items-center gap-1 ml-2">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#f59e0b] animate-ping" />
+              {t.botThinking}
+            </span>
+          )}
+          {timeControl !== 'unlimited' && (
+            <div className="ml-3 font-mono text-xs font-bold px-2 py-0.5 rounded bg-black/50 text-[#c7b8a7] flex items-center gap-1 border border-[#3d2b1e]">
+              <TimerIcon className="w-3 h-3 text-[#f59e0b]" />
+              <span>{formatClock(playerColor === 'w' ? blackTime : whiteTime)}</span>
             </div>
           )}
-
-          {/* Right Move History Card (collapsible / compact) */}
-          <div className="pointer-events-auto w-full md:w-64 h-32 md:h-40 shadow-xl">
-            <MoveHistory history={moveHistory} language={settings.language} />
-          </div>
         </div>
       </div>
 
-      {/* MODALS */}
-      {/* Bot Selector Modal */}
+      {/* Hint Alert Notification */}
+      {hintInfo && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-[#1a2e3b]/90 border border-[#38bdf8]/50 text-[#bae6fd] text-xs font-bold px-4 py-1.5 rounded-full shadow-2xl animate-fadeIn flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#38bdf8]" />
+          <span>{t.hintMessage.replace('{move}', `${hintInfo.from.toUpperCase()} ➔ ${hintInfo.to.toUpperCase()}`)}</span>
+        </div>
+      )}
+
+      {/* Check Alert Notification */}
+      {inCheck && !isGameOver && (
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-30 pointer-events-auto bg-[#3e1313]/90 border border-[#ef4444]/60 text-[#fca5a5] text-xs font-black px-4 py-1.5 rounded-full shadow-2xl animate-pulse tracking-wide">
+          {t.check}
+        </div>
+      )}
+
+      {/* BOTTOM BEVEL OVERLAY (matches the exact text from reference photo!) */}
+      <div className="absolute bottom-2 left-0 right-0 z-20 pointer-events-none flex justify-center px-4">
+        <div className="w-full max-w-xl flex items-center justify-between text-xs font-serif tracking-wider uppercase text-[#c2aba0] opacity-85 select-none drop-shadow">
+          {/* Left Bevel Text (Bot name & Elo) */}
+          <span className="font-bold tracking-widest text-[#d8c2b5]">
+            {selectedBot.name.toUpperCase()} LEVEL ({selectedBot.elo})
+          </span>
+
+          {/* Right Bevel Text (Turn status: e.g. "1. White's move") */}
+          <span className="italic font-sans text-xs tracking-normal lowercase first-letter:uppercase text-[#e6d8ce]">
+            {currentMoveText}
+          </span>
+        </div>
+      </div>
+
+      {/* Player Card Bottom (Subtle, next to bottom edge) */}
+      <div className="absolute bottom-10 left-4 z-20 pointer-events-none hidden md:block">
+        <div className="pointer-events-auto flex items-center gap-3 px-3 py-1.5 rounded-lg bg-[#1f1610]/80 border border-[#3d2b1e] backdrop-blur-sm shadow-lg text-xs">
+          <span className="text-lg">♔</span>
+          <div>
+            <div className="font-bold text-white">
+              {playerColor === 'w' ? (settings.language === 'vi' ? 'Bạn (Trắng)' : 'You (White)') : (settings.language === 'vi' ? 'Bạn (Đen)' : 'You (Black)')}
+            </div>
+            <CapturedPiecesView captured={capturedPieces} color={playerColor} />
+          </div>
+          {timeControl !== 'unlimited' && (
+            <div className="ml-2 font-mono text-xs font-bold px-2 py-0.5 rounded bg-black/50 text-[#f59e0b] flex items-center gap-1 border border-[#3d2b1e]">
+              <TimerIcon className="w-3 h-3 text-[#f59e0b]" />
+              <span>{formatClock(playerColor === 'w' ? whiteTime : blackTime)}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* SLIDE-OUT MENU DRAWER */}
+      <MenuDrawer
+        isOpen={isMenuDrawerOpen}
+        bot={selectedBot}
+        settings={settings}
+        moveHistory={moveHistory}
+        language={settings.language}
+        onClose={() => setIsMenuDrawerOpen(false)}
+        onOpenBotSelector={() => setIsBotModalOpen(true)}
+        onRestartMatch={() => handleStartGame()}
+        onResign={handleResign}
+        onUpdateSettings={(newVals) => setSettings((s) => ({ ...s, ...newVals }))}
+      />
+
+      {/* BOT SELECTOR MODAL */}
       <BotSelectorModal
         isOpen={isBotModalOpen}
         selectedBot={selectedBot}
@@ -814,11 +656,11 @@ export const App: React.FC = () => {
         onSelectBot={setSelectedBot}
         onSelectColor={setPlayerColor}
         onSelectTimeControl={setTimeControl}
-        onStartGame={() => startNewGame(selectedBot, playerColor, timeControl)}
+        onStartGame={() => handleStartGame(selectedBot, playerColor, timeControl)}
         onClose={() => setIsBotModalOpen(false)}
       />
 
-      {/* Pawn Promotion Modal */}
+      {/* PAWN PROMOTION MODAL */}
       <PromotionModal
         isOpen={pendingPromotion !== null}
         color={playerColor}
@@ -826,15 +668,7 @@ export const App: React.FC = () => {
         onSelectPiece={handlePromotionSelect}
       />
 
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        settings={settings}
-        onUpdateSettings={(newVals) => setSettings((prev) => ({ ...prev, ...newVals }))}
-        onClose={() => setIsSettingsOpen(false)}
-      />
-
-      {/* Game Over Modal */}
+      {/* GAME OVER MODAL */}
       <GameOverModal
         isOpen={isGameOverModalOpen}
         winner={winner}
@@ -842,29 +676,29 @@ export const App: React.FC = () => {
         playerColor={playerColor}
         bot={selectedBot}
         language={settings.language}
-        onRematch={() => startNewGame()}
+        onRematch={() => handleStartGame()}
         onChangeBot={() => {
           setIsGameOverModalOpen(false);
           setIsBotModalOpen(true);
         }}
       />
 
-      {/* Resign Confirmation Dialog */}
+      {/* RESIGN CONFIRMATION */}
       {isResignConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-sm glass-panel rounded-2xl border border-white/20 p-5 shadow-2xl text-center">
-            <h4 className="text-base font-bold text-white mb-2">{t.resignConfirmTitle}</h4>
-            <p className="text-xs text-neutral-300 mb-5">{t.resignConfirmMsg}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-[#1c1511] text-[#ede8e1] rounded-xl border border-[#443326] p-5 shadow-2xl text-center">
+            <h4 className="text-base font-bold text-white mb-2">{t.confirmResignTitle}</h4>
+            <p className="text-xs text-[#a89a8e] mb-5">{t.confirmResignMsg}</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setIsResignConfirmOpen(false)}
-                className="flex-1 py-2 rounded-xl bg-white/10 text-xs font-semibold hover:bg-white/15 transition-colors"
+                className="flex-1 py-2 rounded-lg bg-[#291e17] text-xs font-semibold hover:bg-[#382920] transition-colors"
               >
-                {t.confirmCancel}
+                {t.confirmNo}
               </button>
               <button
                 onClick={confirmResign}
-                className="flex-1 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-xs font-bold text-white shadow-lg transition-colors"
+                className="flex-1 py-2 rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-xs font-bold text-white shadow-lg transition-colors"
               >
                 {t.confirmYes}
               </button>
