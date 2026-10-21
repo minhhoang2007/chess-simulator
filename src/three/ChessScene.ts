@@ -519,9 +519,11 @@ export class ChessScene {
     const endPos = this.squareToPosition(to);
     const dist = startPos.distanceTo(endPos);
     const startTime = performance.now();
-    // Adaptive duration: shorter for 1-square moves or drag-drop snaps, slightly longer for long slides
-    const duration = dist < 0.6 ? 120 : Math.min(290, Math.max(210, 185 + dist * 16));
-    const arcHeight = dist < 0.6 ? 0.02 : Math.min(0.14, 0.06 + dist * 0.012);
+    // 1.5x slightly more deliberate, elegant glide speed so human eye can follow bot moving piece easily
+    // (~300ms - 420ms duration)
+    const baseDuration = dist < 0.6 ? 180 : Math.min(420, Math.max(300, 260 + dist * 22));
+    const duration = baseDuration;
+    const arcHeight = dist < 0.6 ? 0.03 : Math.min(0.18, 0.08 + dist * 0.016);
     const tempPos = new THREE.Vector3();
 
     const animStep = () => {
