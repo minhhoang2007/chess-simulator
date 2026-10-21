@@ -27,11 +27,11 @@ export const App: React.FC = () => {
   const [matedKingScreenPos, setMatedKingScreenPos] = useState<{ x: number; y: number } | null>(null);
   const matedKingSquareRef = useRef<Square | null>(null);
 
-  // Settings: English + Chill Cafe 3D Wood Board
+  // Settings: Default Board Blue ('tournament-blue') + Classic Wood ('classic-wood')
   const [settings, setSettings] = useState<GameSettings>({
     language: 'en',
     pieceTheme: 'classic-wood',
-    boardTheme: 'rustic-wood',
+    boardTheme: 'tournament-blue',
     soundEnabled: true,
     showCoordinates: true,
     showLegalMoves: true,

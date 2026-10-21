@@ -14,7 +14,7 @@ export class ChessScene {
   // Meshes & Cache
   private piecesMap: Map<Square, THREE.Mesh> = new Map();
   private pieceTheme: PieceTheme = 'classic-wood';
-  private boardTheme: BoardTheme = 'rustic-wood';
+  private boardTheme: BoardTheme = 'tournament-blue';
   private showCoordinates: boolean = true;
   private boardMesh: THREE.Mesh | null = null;
   private tableMesh: THREE.Mesh | null = null;
@@ -161,9 +161,15 @@ export class ChessScene {
       toneMapped: false
     });
 
-    // Dark walnut front/side bezel matching the bottom edge of the board in screen_2.png
+    // Matching 3D side bezel color for each board theme
+    const sideColor =
+      this.boardTheme === 'tournament-blue'
+        ? 0x15273e
+        : this.boardTheme === 'obsidian-marble'
+        ? 0x161f2e
+        : 0x261a12;
     const sideMat = new THREE.MeshBasicMaterial({
-      color: 0x261a12,
+      color: sideColor,
       toneMapped: false
     });
 
