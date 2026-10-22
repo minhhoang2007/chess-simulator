@@ -2,123 +2,255 @@ import { BotProfile } from '../types/chess';
 
 export const CHESS_COM_BOTS: BotProfile[] = [
   {
-    id: 'jimmy',
-    name: 'Jimmy',
-    elo: 600,
+    id: 'maria',
+    name: 'Maria',
+    elo: 1000,
+    eloDisplay: '1000',
     category: 'beginner',
-    avatar: '/arya/waving/01.png',
+    avatar: '/bots/maria.png',
     avatarBg: '#3b82f6',
-    personalityTag: 'Beginner',
+    personalityTag: 'Club Novice',
     quote: {
-      vi: "Hi! Let's play a chill game of chess.",
-      en: "Hi! Let's play a chill game of chess."
+      vi: "Hola! I've been practicing my tactics. Let's have a great game!",
+      en: "Hola! I've been practicing my tactics. Let's have a great game!"
     },
     description: {
-      vi: 'Friendly beginner bot. Plays casual moves and occasionally leaves pieces undefended.',
-      en: 'Friendly beginner bot. Plays casual moves and occasionally leaves pieces undefended.'
-    },
-    skillLevel: 0,
-    depth: 2,
-    blunderRate: 0.35
-  },
-  {
-    id: 'zara',
-    name: 'Zara',
-    elo: 850,
-    category: 'beginner',
-    avatar: '/arya/idle/00.png',
-    avatarBg: '#ec4899',
-    personalityTag: 'Casual',
-    quote: {
-      vi: 'I like developing pieces and looking for quick attacks!',
-      en: 'I like developing pieces and looking for quick attacks!'
-    },
-    description: {
-      vi: 'Active novice player who loves open positions and early tactical exchanges.',
-      en: 'Active novice player who loves open positions and early tactical exchanges.'
+      vi: 'Solid 1000-ELO club newcomer. Develops pieces actively but can miss multi-move combinations.',
+      en: 'Solid 1000-ELO club newcomer. Develops pieces actively but can miss multi-move combinations.'
     },
     skillLevel: 3,
     depth: 4,
-    blunderRate: 0.20
+    blunderRate: 0.16
+  },
+  {
+    id: 'sven',
+    name: 'Sven',
+    elo: 1100,
+    eloDisplay: '1100',
+    category: 'beginner',
+    avatar: '/bots/sven.png',
+    avatarBg: '#06b6d4',
+    personalityTag: 'Defensive',
+    quote: {
+      vi: "Zdravo! Just don't take any of my pieces, OK?",
+      en: "Zdravo! Just don't take any of my pieces, OK?"
+    },
+    description: {
+      vi: 'Sven hates losing pieces and likes to play defensively. Can you break through his solid shell?',
+      en: 'Sven hates losing pieces and likes to play defensively. Can you break through his solid shell?'
+    },
+    skillLevel: 5,
+    depth: 5,
+    blunderRate: 0.10
+  },
+  {
+    id: 'emir',
+    name: 'Emir',
+    elo: 1200,
+    eloDisplay: '1200',
+    category: 'intermediate',
+    avatar: '/bots/emir.png',
+    avatarBg: '#14b8a6',
+    personalityTag: 'Tactical',
+    quote: {
+      vi: "Selam! My kids think I'm a Grandmaster — don't tell them otherwise!",
+      en: "Selam! My kids think I'm a Grandmaster — don't tell them otherwise!"
+    },
+    description: {
+      vi: 'Emir taught his kids how to play chess and plays a steady, principled intermediate game.',
+      en: 'Emir taught his kids how to play chess and plays a steady, principled intermediate game.'
+    },
+    skillLevel: 6,
+    depth: 6,
+    blunderRate: 0.06
   },
   {
     id: 'nelson',
     name: 'Nelson',
     elo: 1300,
+    eloDisplay: '1300',
     category: 'intermediate',
-    avatar: '/arya/review/02.png',
+    avatar: '/bots/nelson.png',
     avatarBg: '#f59e0b',
-    personalityTag: 'Aggressive',
+    personalityTag: 'Queen Hunter',
     quote: {
-      vi: 'Watch out for my early Queen attacks!',
-      en: 'Watch out for my early Queen attacks!'
+      vi: 'Molo! Watch out for my early Queen attacks! Your move!',
+      en: 'Molo! Watch out for my early Queen attacks! Your move!'
     },
     description: {
-      vi: 'Brings the Queen out early and hunts for aggressive tactical traps.',
-      en: 'Brings the Queen out early and hunts for aggressive tactical traps.'
+      vi: 'Nelson knows that the Queen is the strongest piece and loves bringing her out early to punish mistakes.',
+      en: 'Nelson knows that the Queen is the strongest piece and loves bringing her out early to punish mistakes.'
     },
     skillLevel: 8,
-    depth: 6,
-    blunderRate: 0.06
+    depth: 7,
+    blunderRate: 0.04
   },
   {
     id: 'antonio',
-    name: 'Arya',
+    name: 'Antonio',
     elo: 1500,
+    eloDisplay: '1500',
     category: 'intermediate',
-    avatar: '/arya/jumping/02.png',
+    avatar: '/bots/antonio.png',
     avatarBg: '#10b981',
     personalityTag: 'Balanced',
     quote: {
-      vi: "Let's see if you can outplay my positional setup!",
-      en: "Let's see if you can outplay my positional setup!"
+      vi: 'Balance is the key to success. Good luck!',
+      en: 'Balance is the key to success. Good luck!'
     },
     description: {
-      vi: 'Plays clean, principled openings with solid central control and sharp tactics.',
-      en: 'Plays clean, principled openings with solid central control and sharp tactics.'
+      vi: 'Antonio prides himself on being a well-rounded positional player with strong central control.',
+      en: 'Antonio prides himself on being a well-rounded positional player with strong central control.'
     },
-    skillLevel: 11,
+    skillLevel: 10,
     depth: 9,
-    blunderRate: 0.02
+    blunderRate: 0.01
+  },
+  {
+    id: 'isabel',
+    name: 'Isabel',
+    elo: 1600,
+    eloDisplay: '1600',
+    category: 'advanced',
+    avatar: '/bots/isabel.png',
+    avatarBg: '#ec4899',
+    personalityTag: 'Endgame Pro',
+    quote: {
+      vi: "Buenas! I've been studying endgames with my Grandmaster coach.",
+      en: "Buenas! I've been studying endgames with my Grandmaster coach."
+    },
+    description: {
+      vi: 'Isabel calculates cleanly and converts small advantages in the endgame with accuracy.',
+      en: 'Isabel calculates cleanly and converts small advantages in the endgame with accuracy.'
+    },
+    skillLevel: 12,
+    depth: 10,
+    blunderRate: 0.0
   },
   {
     id: 'wally',
     name: 'Wally',
     elo: 1800,
+    eloDisplay: '1800',
     category: 'advanced',
-    avatar: '/arya/waiting/02.png',
+    avatar: '/bots/wally.png',
     avatarBg: '#8b5cf6',
-    personalityTag: 'Advanced',
+    personalityTag: 'Club Veteran',
     quote: {
-      vi: 'Every move has a strategic purpose. Prepare for the endgame.',
-      en: 'Every move has a strategic purpose. Prepare for the endgame.'
+      vi: "Guid mornin. Let's sit back and enjoy a deep strategic game.",
+      en: "Guid mornin. Let's sit back and enjoy a deep strategic game."
     },
     description: {
-      vi: 'Strong club-level tactician with deep calculation and accurate endgame play.',
-      en: 'Strong club-level tactician with deep calculation and accurate endgame play.'
+      vi: 'Strong 1800 club tactician with deep calculation and rock-solid positional awareness.',
+      en: 'Strong 1800 club tactician with deep calculation and rock-solid positional awareness.'
     },
-    skillLevel: 15,
+    skillLevel: 14,
     depth: 11,
     blunderRate: 0.0
   },
   {
-    id: 'francis',
-    name: 'Francis',
-    elo: 2200,
-    category: 'master',
-    avatar: '/arya/review/04.png',
-    avatarBg: '#ef4444',
-    personalityTag: 'Master',
+    id: 'li',
+    name: 'Li',
+    elo: 2000,
+    eloDisplay: '2000',
+    category: 'advanced',
+    avatar: '/bots/li.png',
+    avatarBg: '#6366f1',
+    personalityTag: 'Expert',
     quote: {
-      vi: 'Master-level precision. No tactical mistakes forgiven.',
-      en: 'Master-level precision. No tactical mistakes forgiven.'
+      vi: 'Sharp calculation and disciplined defense. Show me your best lines!',
+      en: 'Sharp calculation and disciplined defense. Show me your best lines!'
     },
     description: {
-      vi: 'FIDE Master strength powered by Stockfish. Unforgiving in both tactics and endgames.',
-      en: 'FIDE Master strength powered by Stockfish. Unforgiving in both tactics and endgames.'
+      vi: '2000-rated Expert who punishes tactical inaccuracies immediately.',
+      en: '2000-rated Expert who punishes tactical inaccuracies immediately.'
+    },
+    skillLevel: 16,
+    depth: 13,
+    blunderRate: 0.0
+  },
+  {
+    id: 'noam',
+    name: 'Noam',
+    elo: 2200,
+    eloDisplay: '2200',
+    category: 'master',
+    avatar: '/bots/noam.png',
+    avatarBg: '#d97706',
+    personalityTag: 'Master',
+    quote: {
+      vi: "Shalom! I've played many legends over the decades. Let's give it a go.",
+      en: "Shalom! I've played many legends over the decades. Let's give it a go."
+    },
+    description: {
+      vi: 'Veteran National Master with decades of tournament experience and deep endgame mastery.',
+      en: 'Veteran National Master with decades of tournament experience and deep endgame mastery.'
+    },
+    skillLevel: 18,
+    depth: 14,
+    blunderRate: 0.0
+  },
+  {
+    id: 'gotham',
+    name: 'GothamChess',
+    elo: 2500,
+    eloDisplay: '2500',
+    category: 'master',
+    avatar: '/bots/gotham.png',
+    avatarBg: '#eab308',
+    personalityTag: 'THE ROOOOK!',
+    quote: {
+      vi: 'And he sacrifices... THE ROOOOK!! Ready for some spicy chess?',
+      en: 'And he sacrifices... THE ROOOOK!! Ready for some spicy chess?'
+    },
+    description: {
+      vi: 'International Master Levy Rozman. Dynamic, aggressive, and always hunting for brilliant sacrifices.',
+      en: 'International Master Levy Rozman. Dynamic, aggressive, and always hunting for brilliant sacrifices.'
+    },
+    skillLevel: 19,
+    depth: 15,
+    blunderRate: 0.0
+  },
+  {
+    id: 'magnus',
+    name: 'Magnus Carlsen',
+    elo: 2882,
+    eloDisplay: '2882',
+    category: 'master',
+    avatar: '/bots/magnus.png',
+    avatarBg: '#2563eb',
+    personalityTag: 'GOAT • World #1',
+    quote: {
+      vi: 'Sit down. Find the best moves, or get squeezed in the endgame.',
+      en: 'Sit down. Find the best moves, or get squeezed in the endgame.'
+    },
+    description: {
+      vi: '5-time World Chess Champion and highest-rated player in history (2882 peak). Relentless precision.',
+      en: '5-time World Chess Champion and highest-rated player in history (2882 peak). Relentless precision.'
     },
     skillLevel: 20,
-    depth: 14,
+    depth: 17,
+    blunderRate: 0.0
+  },
+  {
+    id: 'ayanokouji',
+    name: 'Ayanokouji',
+    elo: 3500,
+    eloDisplay: '+∞',
+    category: 'master',
+    avatar: '/bots/ayanokouji.jpg',
+    avatarBg: '#dc2626',
+    personalityTag: 'White Room • ∞',
+    quote: {
+      vi: 'All pieces are merely tools. In the end, winning is everything.',
+      en: 'All pieces are merely tools. In the end, winning is everything.'
+    },
+    description: {
+      vi: 'Kiyotaka Ayanokouji (Classroom of the Elite). Unleashes 100% unthrottled maximum Stockfish engine calculation.',
+      en: 'Kiyotaka Ayanokouji (Classroom of the Elite). Unleashes 100% unthrottled maximum Stockfish engine calculation.'
+    },
+    skillLevel: 20,
+    depth: 20,
     blunderRate: 0.0
   }
 ];

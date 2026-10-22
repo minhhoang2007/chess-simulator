@@ -9,10 +9,11 @@ export type BoardTheme = 'rustic-wood' | 'obsidian-marble' | 'tournament-blue';
 
 export interface BotProfile {
   id: string;
-  name: string; // e.g., "Jimmy", "Nelson", "Antonio"
+  name: string; // e.g., "Nelson", "Antonio", "Ayanokouji"
   elo: number;
+  eloDisplay?: string; // e.g., "+∞" for Ayanokouji Kiyotaka
   category: 'beginner' | 'intermediate' | 'advanced' | 'master';
-  avatar: string; // stylized SVG / image avatar
+  avatar: string; // official Chess.com / anime avatar
   avatarBg: string;
   quote: {
     vi: string;

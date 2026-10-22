@@ -115,9 +115,15 @@ class StockfishEngineService {
     if (!this.worker) return;
 
     this.sendCommand('stop');
-    this.sendCommand('setoption name UCI_LimitStrength value true');
-    this.sendCommand(`setoption name UCI_Elo value ${bot.elo}`);
-    this.sendCommand(`setoption name Skill Level value ${bot.skillLevel}`);
+    if (bot.elo >= 2500) {
+      // Unthrottled Master / Grandmaster / White Room (+∞) Stockfish strength
+      this.sendCommand('setoption name UCI_LimitStrength value false');
+      this.sendCommand(`setoption name Skill Level value ${bot.skillLevel}`);
+    } else {
+      this.sendCommand('setoption name UCI_LimitStrength value true');
+      this.sendCommand(`setoption name UCI_Elo value ${Math.min(2850, Math.max(800, bot.elo))}`);
+      this.sendCommand(`setoption name Skill Level value ${bot.skillLevel}`);
+    }
     this.sendCommand('isready');
   }
 
@@ -175,8 +181,15 @@ class StockfishEngineService {
       this.sendCommand('stop');
       this.sendCommand(`position fen ${game.fen()}`);
 
-      const movetime = Math.min(210, Math.max(100, bot.skillLevel * 10));
-      const depth = Math.min(12, bot.depth);
+      const movetime =
+        bot.elo >= 3000
+          ? 850
+          : bot.elo >= 2500
+          ? 600
+          : bot.elo >= 2000
+          ? 420
+          : Math.min(320, Math.max(120, bot.skillLevel * 18));
+      const depth = Math.min(20, Math.max(2, bot.depth));
       this.sendCommand(`go depth ${depth} movetime ${movetime}`);
 
       this.searchTimeout = window.setTimeout(() => {
@@ -185,14 +198,84 @@ class StockfishEngineService {
           const fallback = this.calculateLocalMove(game, bot);
           deliverWithHumanTempo(fallback);
         }
-      }, 650);
+      }, movetime + 1200);
     } else {
       const move = this.calculateLocalMove(game, bot);
       deliverWithHumanTempo(move);
     }
   }
 
-  // Robust Alpha-Beta Minimax Fallback
+  // Robust Alpha-Beta Minimax Fallback scaled by Bot ELO
+  private evaluateBoard(game: Chess): number {
+    if (game.isCheckmate()) {
+      return game.turn() === 'w' ? -99999 : 99999;
+    }
+    if (game.isDraw()) return 0;
+
+    const pieceValues: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+    const board = game.board();
+    let score = 0;
+
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const p = board[r][c];
+        if (!p) continue;
+        let val = pieceValues[p.type] || 0;
+        // Center control & advancement bonus
+        const centerDist = Math.abs(3.5 - r) + Math.abs(3.5 - c);
+        if (p.type === 'n' || p.type === 'b' || p.type === 'p') {
+          val += Math.round((7 - centerDist) * 4);
+        }
+        if (p.type === 'p') {
+          const adv = p.color === 'w' ? 6 - r : r - 1;
+          val += adv * 8;
+        }
+        score += p.color === 'w' ? val : -val;
+      }
+    }
+    return score;
+  }
+
+  private minimax(
+    game: Chess,
+    depth: number,
+    alpha: number,
+    beta: number,
+    maximizingPlayer: boolean
+  ): number {
+    if (depth === 0 || game.isGameOver()) {
+      return this.evaluateBoard(game);
+    }
+
+    const moves = game.moves({ verbose: true });
+    // Order captures first for faster alpha-beta pruning
+    moves.sort((a, b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0));
+
+    if (maximizingPlayer) {
+      let maxEval = -Infinity;
+      for (const m of moves) {
+        game.move(m);
+        const ev = this.minimax(game, depth - 1, alpha, beta, false);
+        game.undo();
+        if (ev > maxEval) maxEval = ev;
+        if (ev > alpha) alpha = ev;
+        if (beta <= alpha) break;
+      }
+      return maxEval;
+    } else {
+      let minEval = Infinity;
+      for (const m of moves) {
+        game.move(m);
+        const ev = this.minimax(game, depth - 1, alpha, beta, true);
+        game.undo();
+        if (ev < minEval) minEval = ev;
+        if (ev < beta) beta = ev;
+        if (beta <= alpha) break;
+      }
+      return minEval;
+    }
+  }
+
   private calculateLocalMove(game: Chess, bot: BotProfile): BestMoveResult {
     const legalMoves = game.moves({ verbose: true });
     if (legalMoves.length === 0) {
@@ -206,23 +289,26 @@ class StockfishEngineService {
       };
     }
 
-    const pieceValues: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+    const clone = new Chess(game.fen());
+    const isWhite = clone.turn() === 'w';
+    const searchDepth = bot.elo >= 2200 ? 3 : bot.elo >= 1400 ? 2 : 1;
+    const noiseAmplitude = Math.max(0, (2300 - bot.elo) * 0.08);
+
+    // Order captures/checks first
+    legalMoves.sort((a, b) => (b.captured ? 10 : 0) - (a.captured ? 10 : 0));
+
     let bestMove = legalMoves[0];
-    let bestScore = -Infinity;
+    let bestScore = isWhite ? -Infinity : Infinity;
 
     for (const move of legalMoves) {
-      let score = 0;
-      if (move.captured) {
-        score += (pieceValues[move.captured] || 100) * 10 - (pieceValues[move.piece] || 100);
-      }
-      if (move.san.includes('+')) score += 50;
-      if (move.san.includes('#')) score += 100000;
-      if (['e4', 'd4', 'e5', 'd5'].includes(move.to)) score += 20;
+      clone.move(move);
+      const rawScore = this.minimax(clone, searchDepth - 1, -Infinity, Infinity, !isWhite);
+      clone.undo();
 
-      const noise = (Math.random() - 0.5) * (2400 - bot.elo) * 0.1;
-      const finalScore = score + noise;
+      const noise = (Math.random() - 0.5) * noiseAmplitude;
+      const finalScore = rawScore + noise;
 
-      if (finalScore > bestScore) {
+      if (isWhite ? finalScore > bestScore : finalScore < bestScore) {
         bestScore = finalScore;
         bestMove = move;
       }

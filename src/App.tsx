@@ -76,6 +76,17 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // Keep fresh references to callbacks so ChessScene never calls stale closures
+  const handlersRef = useRef<{
+    onSelect: (sq: Square) => void;
+    onMove: (from: Square, to: Square) => void;
+    onCamera: () => void;
+  }>({
+    onSelect: () => {},
+    onMove: () => {},
+    onCamera: () => {}
+  });
+
   // 1. Initialize 3D Scene
   useEffect(() => {
     if (!canvasContainerRef.current) return;
@@ -86,12 +97,13 @@ export const App: React.FC = () => {
     scene.setTheme(settings.pieceTheme, settings.boardTheme, settings.showCoordinates);
     scene.setCameraMode('photo');
     scene.setPreviewMode(true);
+    scene.setInteractionState(playerColor, true);
     scene.updateBoard(chess);
 
     scene.setCallbacks(
-      (square: Square) => handleSquareSelect(square),
-      (from: Square, to: Square) => handleMoveAttempt(from, to),
-      () => updateMatedKingScreenCoords()
+      (square: Square) => handlersRef.current.onSelect(square),
+      (from: Square, to: Square) => handlersRef.current.onMove(from, to),
+      () => handlersRef.current.onCamera()
     );
 
     return () => {
@@ -99,6 +111,12 @@ export const App: React.FC = () => {
       sceneRef.current = null;
     };
   }, []);
+
+  // Sync playerColor & turn lock into 3D scene so player can never drag opponent pieces or move during bot's turn
+  useEffect(() => {
+    const canPlayerMove = !isGameOver && !isBotThinking && turn === playerColor;
+    sceneRef.current?.setInteractionState(playerColor, canPlayerMove);
+  }, [playerColor, isGameOver, isBotThinking, turn]);
 
   // Sync settings
   useEffect(() => {
@@ -269,6 +287,7 @@ export const App: React.FC = () => {
       checkGameEnd();
 
       if (!chess.isGameOver() && chess.turn() !== playerColor) {
+        sceneRef.current?.setInteractionState(playerColor, false);
         triggerBot();
       }
     } catch (err) {
@@ -277,12 +296,17 @@ export const App: React.FC = () => {
   };
 
   // 6. Bot Move Execution (Human-speed response)
-  const triggerBot = useCallback(() => {
+  const triggerBot = useCallback((botOverride?: BotProfile, colOverride?: Color) => {
+    const activeBot = botOverride || selectedBot;
+    const activePlayerColor = colOverride || playerColor;
     setIsBotThinking(true);
+    sceneRef.current?.setInteractionState(activePlayerColor, false);
 
-    stockfishEngine.getBestMove(chess, selectedBot, (best) => {
-      setIsBotThinking(false);
-      if (chess.isGameOver()) return;
+    stockfishEngine.getBestMove(chess, activeBot, (best) => {
+      if (chess.isGameOver()) {
+        setIsBotThinking(false);
+        return;
+      }
 
       try {
         const moveRes = chess.move({
@@ -301,6 +325,10 @@ export const App: React.FC = () => {
 
           sceneRef.current?.animateMove(best.from, best.to, () => {
             sceneRef.current?.updateBoard(chess);
+            setIsBotThinking(false);
+            if (!chess.isGameOver()) {
+              sceneRef.current?.setInteractionState(activePlayerColor, true);
+            }
           });
 
           setTurn(chess.turn());
@@ -314,7 +342,7 @@ export const App: React.FC = () => {
             captured: moveRes.captured,
             promotion: moveRes.promotion as PieceSymbol,
             fen: chess.fen(),
-            moveNumber: Math.floor(moveHistory.length / 2) + 1
+            moveNumber: Math.floor(chess.history().length / 2)
           };
           setMoveHistory((prev) => [...prev, rec]);
 
@@ -326,12 +354,22 @@ export const App: React.FC = () => {
           }
 
           checkGameEnd();
+        } else {
+          setIsBotThinking(false);
         }
       } catch (e) {
         console.error('Bot execution error:', e);
+        setIsBotThinking(false);
       }
     });
-  }, [chess, selectedBot, playerColor, moveHistory.length]);
+  }, [chess, selectedBot, playerColor]);
+
+  // Keep handlersRef synced with latest state & callbacks
+  handlersRef.current = {
+    onSelect: handleSquareSelect,
+    onMove: handleMoveAttempt,
+    onCamera: updateMatedKingScreenCoords
+  };
 
   // 7. Checkmate & Game End (Chess.com Checkmate '#' Popup on King & Modal)
   const checkGameEnd = () => {
@@ -437,7 +475,10 @@ export const App: React.FC = () => {
     setIsBotModalOpen(false);
 
     if (newCol === 'b') {
-      setTimeout(() => triggerBot(), 200);
+      sceneRef.current?.setInteractionState(newCol, false);
+      setTimeout(() => triggerBot(newBot, newCol), 200);
+    } else {
+      sceneRef.current?.setInteractionState(newCol, true);
     }
   };
 
@@ -560,6 +601,46 @@ export const App: React.FC = () => {
           <div className="w-0 h-0 border-x-[6px] border-x-transparent border-t-[7px] border-t-[#ca3431] -mt-[0.5px] drop-shadow-sm" />
         </div>
       )}
+
+      {/* ========================================================
+          TOP-CENTER OPPONENT BOT CARD (Chess.com style)
+          ======================================================== */}
+      <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+        <button
+          onClick={() => setIsBotModalOpen(true)}
+          title="Click to change opponent bot"
+          className="px-3 py-1.5 rounded-xl bg-[#262421]/90 hover:bg-[#312e2b] border border-white/12 shadow-lg backdrop-blur-md flex items-center gap-2.5 transition-all cursor-pointer group"
+        >
+          <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-[#1e1d1a] border border-white/15 shrink-0">
+            <img
+              src={selectedBot.avatar}
+              alt={selectedBot.name}
+              className="w-full h-full object-cover"
+            />
+            {isBotThinking && (
+              <span className="absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full bg-[#81b64c] animate-ping" />
+            )}
+          </div>
+          <div className="text-left">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-white">{selectedBot.name}</span>
+              <span
+                className={`text-[11px] font-bold px-1.5 py-0.2 rounded border ${
+                  selectedBot.id === 'ayanokouji'
+                    ? 'bg-red-500/20 text-red-300 border-red-400/30'
+                    : 'bg-[#312e2b] text-[#81b64c] border-white/10'
+                }`}
+              >
+                {selectedBot.eloDisplay || selectedBot.elo}
+              </span>
+            </div>
+            <div className="text-[10px] text-[#9e9b95] font-medium flex items-center gap-1">
+              <span>{isBotThinking ? 'Thinking...' : selectedBot.personalityTag}</span>
+              <span className="text-white/40 group-hover:text-white/80 transition-colors">• Change</span>
+            </div>
+          </div>
+        </button>
+      </div>
 
       {/* ========================================================
           TOP-LEFT CORNER CONTROLS (Clean Chess.com Dark Slate Icons)

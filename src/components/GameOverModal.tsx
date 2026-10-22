@@ -116,7 +116,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                 </div>
               </div>
               <span className="text-xs font-bold text-white truncate max-w-[100px]">{selectedBot.name}</span>
-              <span className="text-[10px] text-[#9e9b95] font-medium">{selectedBot.elo} Elo</span>
+              <span className="text-[10px] text-[#9e9b95] font-medium">{selectedBot.eloDisplay || selectedBot.elo} Elo</span>
             </div>
           </div>
 

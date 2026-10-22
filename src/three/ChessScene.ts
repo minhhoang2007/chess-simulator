@@ -39,6 +39,8 @@ export class ChessScene {
   private isPointerDown = false;
   private pointerDownCoord = { x: 0, y: 0 };
   private isDragging = false;
+  private playerColor: Color = 'w';
+  private canInteract = true;
 
   // Smooth Touchpad / Pinch Zoom State
   private zoomScale = 1.0;
@@ -367,7 +369,26 @@ export class ChessScene {
     this.clearHint();
   }
 
+  private cancelActiveDrag() {
+    if (this.draggedMesh && this.dragStartSquare) {
+      this.setPiecePosition(this.draggedMesh, this.squareToPosition(this.dragStartSquare));
+    }
+    this.draggedMesh = null;
+    this.dragStartSquare = null;
+    this.isDragging = false;
+    this.isPointerDown = false;
+  }
+
+  public setInteractionState(playerColor: Color, canInteract: boolean) {
+    this.playerColor = playerColor;
+    this.canInteract = canInteract;
+    if (!canInteract) {
+      this.cancelActiveDrag();
+    }
+  }
+
   public updateBoard(game: Chess) {
+    this.cancelActiveDrag();
     const currentBoard = game.board();
     const activeSquares = new Set<Square>();
 
@@ -386,11 +407,14 @@ export class ChessScene {
 
           if (needsRecreate) {
             if (existingMesh) {
+              existingMesh.userData.animId = (existingMesh.userData.animId || 0) + 1;
               this.scene.remove(existingMesh);
               this.piecesMap.delete(square);
             }
             this.createPieceMesh(square, piece.type, piece.color);
           } else {
+            existingMesh.userData.animId = (existingMesh.userData.animId || 0) + 1;
+            existingMesh.userData.square = square;
             this.setPiecePosition(existingMesh, this.squareToPosition(square));
           }
         }
@@ -399,6 +423,7 @@ export class ChessScene {
 
     for (const [sq, mesh] of this.piecesMap.entries()) {
       if (!activeSquares.has(sq)) {
+        mesh.userData.animId = (mesh.userData.animId || 0) + 1;
         this.scene.remove(mesh);
         this.piecesMap.delete(sq);
       }
@@ -574,6 +599,14 @@ export class ChessScene {
 
   // --- ANIMATED PIECE MOVE (Silky 60-120fps quintic glide) ---
   public animateMove(from: Square, to: Square, onFinish?: () => void) {
+    // If any piece was being dragged while a move triggers, cancel drag immediately
+    if (this.draggedMesh) {
+      this.draggedMesh = null;
+      this.dragStartSquare = null;
+      this.isDragging = false;
+      this.isPointerDown = false;
+    }
+
     const mesh = this.piecesMap.get(from);
     if (!mesh) {
       if (onFinish) onFinish();
@@ -582,6 +615,7 @@ export class ChessScene {
 
     const targetPiece = this.piecesMap.get(to);
     if (targetPiece && targetPiece !== mesh) {
+      targetPiece.userData.animId = (targetPiece.userData.animId || 0) + 1;
       this.scene.remove(targetPiece);
       this.piecesMap.delete(to);
     }
@@ -589,19 +623,27 @@ export class ChessScene {
     this.piecesMap.delete(from);
     this.piecesMap.set(to, mesh);
     mesh.userData.square = to;
+    const currentAnimId = (mesh.userData.animId || 0) + 1;
+    mesh.userData.animId = currentAnimId;
 
-    const startPos = mesh.position.clone();
+    const canonicalFromPos = this.squareToPosition(from);
     const endPos = this.squareToPosition(to);
+    // If the piece was dropped via drag right onto the destination square, start from its dragged position;
+    // otherwise start from the exact mathematical center of `from` square so opponent moves never drift!
+    const startPos =
+      mesh.position.distanceTo(endPos) < 0.85 ? mesh.position.clone() : canonicalFromPos;
     const dist = startPos.distanceTo(endPos);
     const startTime = performance.now();
-    // Another 1.5x deliberate, smooth glide speed (~450ms - 620ms duration)
-    // Allows players to clearly watch and savor each move in a chill cafe pace
-    const baseDuration = dist < 0.6 ? 260 : Math.min(620, Math.max(450, 380 + dist * 32));
+    // Deliberate, smooth glide speed (~450ms - 620ms duration)
+    const baseDuration = dist < 0.6 ? 180 : Math.min(620, Math.max(450, 380 + dist * 32));
     const duration = baseDuration;
-    const arcHeight = dist < 0.6 ? 0.04 : Math.min(0.22, 0.10 + dist * 0.022);
+    const arcHeight = dist < 0.6 ? 0.03 : Math.min(0.22, 0.10 + dist * 0.022);
     const tempPos = new THREE.Vector3();
 
     const animStep = () => {
+      // Stop immediately if a newer animation or board sync superseded this one
+      if (mesh.userData.animId !== currentAnimId) return;
+
       const elapsed = performance.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       // Quintic ease-out for ultra-smooth deceleration as the piece settles on the square
@@ -616,7 +658,7 @@ export class ChessScene {
       if (progress < 1) {
         requestAnimationFrame(animStep);
       } else {
-        this.setPiecePosition(mesh, endPos);
+        this.setPiecePosition(mesh, this.squareToPosition(to));
         if (onFinish) onFinish();
       }
     };
@@ -902,6 +944,11 @@ export class ChessScene {
 
     // 3. Pointer Down / Drag / Click-to-Move
     dom.addEventListener('pointerdown', (e) => {
+      if (!this.canInteract) {
+        this.cancelActiveDrag();
+        return;
+      }
+
       this.isPointerDown = true;
       this.isDragging = false;
       this.pointerDownCoord = { x: e.clientX, y: e.clientY };
@@ -918,16 +965,21 @@ export class ChessScene {
         return;
       }
 
-      if (pieceMesh) {
+      // Strictly prevent dragging opponent's pieces! Only player's own pieces can be dragged.
+      if (pieceMesh && pieceMesh.userData.color === this.playerColor) {
+        const exactSquareCenter = this.squareToPosition(sq);
         this.dragStartSquare = sq;
         this.draggedMesh = pieceMesh;
-        this.dragStartPosition.copy(pieceMesh.position);
-        this.dragTargetPosition.copy(pieceMesh.position);
+        this.dragStartPosition.copy(exactSquareCenter);
+        this.dragTargetPosition.copy(exactSquareCenter);
+        this.setPiecePosition(pieceMesh, exactSquareCenter);
 
         if (this.onSelectSquareCallback) {
           this.onSelectSquareCallback(sq);
         }
       } else {
+        this.dragStartSquare = null;
+        this.draggedMesh = null;
         if (this.onSelectSquareCallback) {
           this.onSelectSquareCallback(sq);
         }
@@ -935,7 +987,7 @@ export class ChessScene {
     });
 
     dom.addEventListener('pointermove', (e) => {
-      if (!this.isPointerDown) return;
+      if (!this.isPointerDown || !this.canInteract) return;
 
       const dx = Math.abs(e.clientX - this.pointerDownCoord.x);
       const dy = Math.abs(e.clientY - this.pointerDownCoord.y);
@@ -956,6 +1008,11 @@ export class ChessScene {
       if (!this.isPointerDown) return;
       this.isPointerDown = false;
 
+      if (!this.canInteract) {
+        this.cancelActiveDrag();
+        return;
+      }
+
       if (this.isDragging && this.draggedMesh && this.dragStartSquare) {
         const dropSquare = this.getSquareFromPointer(e);
 
@@ -963,20 +1020,23 @@ export class ChessScene {
           const from = this.dragStartSquare;
           this.draggedMesh = null;
           this.dragStartSquare = null;
+          this.isDragging = false;
           if (this.onMoveCallback) {
             this.onMoveCallback(from, dropSquare);
           }
         } else {
-          this.setPiecePosition(this.draggedMesh, this.dragStartPosition);
+          this.setPiecePosition(this.draggedMesh, this.squareToPosition(this.dragStartSquare));
           this.draggedMesh = null;
           this.dragStartSquare = null;
+          this.isDragging = false;
         }
       } else {
-        if (this.draggedMesh) {
-          this.setPiecePosition(this.draggedMesh, this.dragStartPosition);
+        if (this.draggedMesh && this.dragStartSquare) {
+          this.setPiecePosition(this.draggedMesh, this.squareToPosition(this.dragStartSquare));
           this.draggedMesh = null;
           this.dragStartSquare = null;
         }
+        this.isDragging = false;
       }
     };
 

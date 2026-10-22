@@ -53,14 +53,14 @@ export const BotSelectorModal: React.FC<BotSelectorModalProps> = ({
             <img
               src={selectedBot.avatar}
               alt={selectedBot.name}
-              className="w-12 h-12 object-contain"
+              className="w-full h-full object-cover"
             />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="text-base font-bold text-white">{selectedBot.name}</span>
               <span className="px-1.5 py-0.5 rounded bg-[#2b2926] text-xs font-bold text-[#81b64c] border border-white/8">
-                {selectedBot.elo}
+                {selectedBot.eloDisplay || selectedBot.elo}
               </span>
               <span className="text-[11px] font-medium text-[#9e9b95]">
                 • {selectedBot.personalityTag}
@@ -77,33 +77,40 @@ export const BotSelectorModal: React.FC<BotSelectorModalProps> = ({
           {/* Choose Bot Rating Grid */}
           <div>
             <div className="text-xs font-semibold text-[#9e9b95] mb-2">
-              Choose Opponent
+              Choose Opponent (1000 – +∞)
             </div>
             <div className="grid grid-cols-3 gap-2">
               {CHESS_COM_BOTS.map((bot) => {
                 const isSelected = selectedBot.id === bot.id;
+                const isInfinite = bot.id === 'ayanokouji';
                 return (
                   <button
                     key={bot.id}
                     type="button"
                     onClick={() => onSelectBot(bot)}
-                    className={`p-2.5 rounded-lg border text-left transition-all flex items-center gap-2 cursor-pointer ${
+                    className={`p-2 rounded-lg border text-left transition-all flex items-center gap-2 cursor-pointer ${
                       isSelected
                         ? 'bg-[#363330] border-[#81b64c] ring-1 ring-[#81b64c]'
+                        : isInfinite
+                        ? 'bg-[#2d2122] border-red-500/35 hover:bg-[#382729] hover:border-red-400/60'
                         : 'bg-[#2b2926] border-white/8 hover:bg-[#312e2b] hover:border-white/16'
                     }`}
                   >
                     <img
                       src={bot.avatar}
                       alt={bot.name}
-                      className="w-8 h-8 object-contain shrink-0"
+                      className="w-9 h-9 rounded-md object-cover shrink-0 bg-[#1e1d1a]"
                     />
                     <div className="min-w-0">
                       <div className="text-xs font-bold text-white truncate">
                         {bot.name}
                       </div>
-                      <div className="text-[11px] font-semibold text-[#81b64c]">
-                        {bot.elo}
+                      <div
+                        className={`text-[11px] font-bold ${
+                          isInfinite ? 'text-red-400' : 'text-[#81b64c]'
+                        }`}
+                      >
+                        {bot.eloDisplay || bot.elo}
                       </div>
                     </div>
                   </button>
