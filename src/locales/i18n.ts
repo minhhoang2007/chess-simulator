@@ -11,11 +11,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#3b82f6',
     personalityTag: 'Club Novice',
     quote: {
-      vi: "Hola! I've been practicing my tactics. Let's have a great game!",
       en: "Hola! I've been practicing my tactics. Let's have a great game!"
     },
     description: {
-      vi: 'Solid 1000-ELO club newcomer. Develops pieces actively but can miss multi-move combinations.',
       en: 'Solid 1000-ELO club newcomer. Develops pieces actively but can miss multi-move combinations.'
     },
     skillLevel: 3,
@@ -32,11 +30,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#06b6d4',
     personalityTag: 'Defensive',
     quote: {
-      vi: "Zdravo! Just don't take any of my pieces, OK?",
       en: "Zdravo! Just don't take any of my pieces, OK?"
     },
     description: {
-      vi: 'Sven hates losing pieces and likes to play defensively. Can you break through his solid shell?',
       en: 'Sven hates losing pieces and likes to play defensively. Can you break through his solid shell?'
     },
     skillLevel: 5,
@@ -53,11 +49,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#14b8a6',
     personalityTag: 'Tactical',
     quote: {
-      vi: "Selam! My kids think I'm a Grandmaster — don't tell them otherwise!",
       en: "Selam! My kids think I'm a Grandmaster — don't tell them otherwise!"
     },
     description: {
-      vi: 'Emir taught his kids how to play chess and plays a steady, principled intermediate game.',
       en: 'Emir taught his kids how to play chess and plays a steady, principled intermediate game.'
     },
     skillLevel: 6,
@@ -74,11 +68,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#f59e0b',
     personalityTag: 'Queen Hunter',
     quote: {
-      vi: 'Molo! Watch out for my early Queen attacks! Your move!',
       en: 'Molo! Watch out for my early Queen attacks! Your move!'
     },
     description: {
-      vi: 'Nelson knows that the Queen is the strongest piece and loves bringing her out early to punish mistakes.',
       en: 'Nelson knows that the Queen is the strongest piece and loves bringing her out early to punish mistakes.'
     },
     skillLevel: 8,
@@ -95,11 +87,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#10b981',
     personalityTag: 'Balanced',
     quote: {
-      vi: 'Balance is the key to success. Good luck!',
       en: 'Balance is the key to success. Good luck!'
     },
     description: {
-      vi: 'Antonio prides himself on being a well-rounded positional player with strong central control.',
       en: 'Antonio prides himself on being a well-rounded positional player with strong central control.'
     },
     skillLevel: 10,
@@ -116,11 +106,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#ec4899',
     personalityTag: 'Endgame Pro',
     quote: {
-      vi: "Buenas! I've been studying endgames with my Grandmaster coach.",
       en: "Buenas! I've been studying endgames with my Grandmaster coach."
     },
     description: {
-      vi: 'Isabel calculates cleanly and converts small advantages in the endgame with accuracy.',
       en: 'Isabel calculates cleanly and converts small advantages in the endgame with accuracy.'
     },
     skillLevel: 12,
@@ -137,11 +125,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#8b5cf6',
     personalityTag: 'Club Veteran',
     quote: {
-      vi: "Guid mornin. Let's sit back and enjoy a deep strategic game.",
       en: "Guid mornin. Let's sit back and enjoy a deep strategic game."
     },
     description: {
-      vi: 'Strong 1800 club tactician with deep calculation and rock-solid positional awareness.',
       en: 'Strong 1800 club tactician with deep calculation and rock-solid positional awareness.'
     },
     skillLevel: 14,
@@ -158,11 +144,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#6366f1',
     personalityTag: 'Expert',
     quote: {
-      vi: 'Sharp calculation and disciplined defense. Show me your best lines!',
       en: 'Sharp calculation and disciplined defense. Show me your best lines!'
     },
     description: {
-      vi: '2000-rated Expert who punishes tactical inaccuracies immediately.',
       en: '2000-rated Expert who punishes tactical inaccuracies immediately.'
     },
     skillLevel: 16,
@@ -179,11 +163,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#d97706',
     personalityTag: 'Master',
     quote: {
-      vi: "Shalom! I've played many legends over the decades. Let's give it a go.",
       en: "Shalom! I've played many legends over the decades. Let's give it a go."
     },
     description: {
-      vi: 'Veteran National Master with decades of tournament experience and deep endgame mastery.',
       en: 'Veteran National Master with decades of tournament experience and deep endgame mastery.'
     },
     skillLevel: 18,
@@ -200,11 +182,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#eab308',
     personalityTag: 'THE ROOOOK!',
     quote: {
-      vi: 'And he sacrifices... THE ROOOOK!! Ready for some spicy chess?',
       en: 'And he sacrifices... THE ROOOOK!! Ready for some spicy chess?'
     },
     description: {
-      vi: 'International Master Levy Rozman. Dynamic, aggressive, and always hunting for brilliant sacrifices.',
       en: 'International Master Levy Rozman. Dynamic, aggressive, and always hunting for brilliant sacrifices.'
     },
     skillLevel: 19,
@@ -221,11 +201,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#2563eb',
     personalityTag: 'GOAT • World #1',
     quote: {
-      vi: 'Sit down. Find the best moves, or get squeezed in the endgame.',
       en: 'Sit down. Find the best moves, or get squeezed in the endgame.'
     },
     description: {
-      vi: '5-time World Chess Champion and highest-rated player in history (2882 peak). Relentless precision.',
       en: '5-time World Chess Champion and highest-rated player in history (2882 peak). Relentless precision.'
     },
     skillLevel: 20,
@@ -242,11 +220,9 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     avatarBg: '#dc2626',
     personalityTag: 'White Room • ∞',
     quote: {
-      vi: 'All pieces are merely tools. In the end, winning is everything.',
       en: 'All pieces are merely tools. In the end, winning is everything.'
     },
     description: {
-      vi: 'Kiyotaka Ayanokouji (Classroom of the Elite). Unleashes 100% unthrottled maximum Stockfish engine calculation.',
       en: 'Kiyotaka Ayanokouji (Classroom of the Elite). Unleashes 100% unthrottled maximum Stockfish engine calculation.'
     },
     skillLevel: 20,
@@ -324,6 +300,5 @@ const EN_STRINGS = {
 };
 
 export const TRANSLATIONS = {
-  vi: EN_STRINGS,
   en: EN_STRINGS
 };

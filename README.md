@@ -44,10 +44,6 @@ There are twelve bots, each one a Stockfish setting with its own name and playin
 - Sound effects for moves, captures, checks, castling and the end of the game
 - Arya, the companion, waves at the start, thinks while you play, waits while the bot moves and reacts when the game ends
 
-**Language**
-
-The whole interface switches between English and Vietnamese.
-
 ## Running it locally
 
 You need [Node.js](https://nodejs.org/) 18 or newer.
@@ -82,7 +78,7 @@ chess-simulator/
 │   ├── audio/         sound playback
 │   ├── components/    UI: bot picker, eval bar, move list, settings, Arya, modals
 │   ├── engine/        talks to Stockfish over UCI
-│   ├── locales/       English and Vietnamese text, bot profiles
+│   ├── locales/       UI text and bot profiles
 │   ├── three/         3D scene, piece geometry and textures
 │   └── types/         shared TypeScript types
 ├── index.html

@@ -2,7 +2,7 @@ import { Square, PieceSymbol, Color } from 'chess.js';
 
 export type { Square, PieceSymbol, Color };
 
-export type Language = 'vi' | 'en';
+export type Language = 'en';
 
 export type PieceTheme = 'classic-wood' | 'liquid-glass' | 'emerald-jade' | 'cyber-neon';
 export type BoardTheme = 'rustic-wood' | 'obsidian-marble' | 'tournament-blue';
@@ -16,11 +16,9 @@ export interface BotProfile {
   avatar: string; // official Chess.com / anime avatar
   avatarBg: string;
   quote: {
-    vi: string;
     en: string;
   };
   description: {
-    vi: string;
     en: string;
   };
   skillLevel: number; // Stockfish Skill Level 0-20

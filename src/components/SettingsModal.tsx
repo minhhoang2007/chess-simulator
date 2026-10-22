@@ -23,25 +23,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     {
       id: 'classic-wood',
       label: t.classicWood,
-      desc: settings.language === 'vi' ? 'Gỗ hoàng dương & mun cổ điển (chuẩn ảnh mẫu)' : 'Polished ivory & ebony wood (photo style)',
+      desc: 'Polished ivory & ebony wood (photo style)',
       preview: '🪵'
     },
     {
       id: 'liquid-glass',
       label: t.liquidGlass,
-      desc: settings.language === 'vi' ? 'Thủy tinh lỏng khúc xạ đa hướng, ánh pha lê' : 'Refractive liquid glass with chromatic dispersion',
+      desc: 'Refractive liquid glass with chromatic dispersion',
       preview: '💎'
     },
     {
       id: 'emerald-jade',
       label: t.emeraldJade,
-      desc: settings.language === 'vi' ? 'Ngọc bích hoàng tộc óng ả, cẩm thạch trắng' : 'Translucent imperial jade & white quartz',
+      desc: 'Translucent imperial jade & white quartz',
       preview: '🟢'
     },
     {
       id: 'cyber-neon',
       label: t.cyberNeon,
-      desc: settings.language === 'vi' ? 'Thủy tinh phát quang dạ quang Neon Sci-Fi' : 'Glowing cyber luminescence neon glass',
+      desc: 'Glowing cyber luminescence neon glass',
       preview: '⚡'
     }
   ];
