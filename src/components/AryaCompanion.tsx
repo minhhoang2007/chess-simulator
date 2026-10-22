@@ -35,11 +35,20 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
   onClickChangeBot
 }) => {
   const [frameIndex, setFrameIndex] = useState(0);
+  const [hasWavedOnce, setHasWavedOnce] = useState(false);
   const config = FRAME_CONFIG[state] || FRAME_CONFIG.start;
 
-  // Preload all frames once so animation never flickers
+  // Preload all sprite folders once so animations never flicker
   useEffect(() => {
-    Object.values(FRAME_CONFIG).forEach(({ folder, count }) => {
+    const ALL_FOLDERS = [
+      { folder: 'waving', count: 4 },
+      { folder: 'review', count: 6 },
+      { folder: 'waiting', count: 6 },
+      { folder: 'jumping', count: 5 },
+      { folder: 'failed', count: 8 },
+      { folder: 'idle', count: 6 }
+    ];
+    ALL_FOLDERS.forEach(({ folder, count }) => {
       for (let i = 0; i < count; i++) {
         const img = new Image();
         img.src = `/arya/${folder}/${String(i).padStart(2, '0')}.png`;
@@ -47,21 +56,66 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
     });
   }, []);
 
+  // Reset wave status whenever state leaves 'start' or when bot changes
   useEffect(() => {
+    if (state !== 'start') {
+      setHasWavedOnce(false);
+    }
+  }, [state, botName]);
+
+  useEffect(() => {
+    // For 'start' state: wave exactly once (4 frames), then transition to static idle pose
+    if (state === 'start' && !hasWavedOnce) {
+      setFrameIndex(0);
+      let step = 0;
+      const id = window.setInterval(() => {
+        step++;
+        if (step >= 4) {
+          window.clearInterval(id);
+          setHasWavedOnce(true);
+          setFrameIndex(0);
+        } else {
+          setFrameIndex(step);
+        }
+      }, 220);
+      return () => window.clearInterval(id);
+    }
+
+    if (state === 'start' && hasWavedOnce) {
+      setFrameIndex(0);
+      return;
+    }
+
     if (config.isStatic) {
       setFrameIndex(config.staticFrame ?? 0);
       return;
     }
+
     setFrameIndex(0);
     const id = window.setInterval(() => {
       setFrameIndex((prev) => (prev + 1) % config.count);
     }, config.intervalMs);
     return () => window.clearInterval(id);
-  }, [config.folder, config.count, config.intervalMs, config.isStatic, config.staticFrame]);
+  }, [state, hasWavedOnce, config.folder, config.count, config.intervalMs, config.isStatic, config.staticFrame]);
 
-  const activeIndex = config.isStatic ? (config.staticFrame ?? 0) : frameIndex;
-  const frameStr = String(activeIndex % config.count).padStart(2, '0');
-  const frameSrc = `/arya/${config.folder}/${frameStr}.png`;
+  const currentFolder =
+    state === 'start'
+      ? hasWavedOnce
+        ? 'idle'
+        : 'waving'
+      : config.folder;
+
+  const activeIndex =
+    state === 'start'
+      ? hasWavedOnce
+        ? 0
+        : frameIndex
+      : config.isStatic
+      ? (config.staticFrame ?? 0)
+      : frameIndex;
+
+  const frameStr = String(activeIndex % (currentFolder === 'idle' ? 6 : config.count)).padStart(2, '0');
+  const frameSrc = `/arya/${currentFolder}/${frameStr}.png`;
 
   return (
     <div className="fixed bottom-5 left-5 z-30 flex items-end gap-2.5 select-none pointer-events-auto">
