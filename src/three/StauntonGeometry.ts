@@ -100,15 +100,15 @@ export class StauntonGeometryFactory {
       c.lerp(new THREE.Color(0xfcf7ec), Math.pow(dotKey, 1.6) * 0.52);
       c.lerp(new THREE.Color(0x6e5c49), Math.pow(rightShadow, 1.2) * 0.55);
     } else {
-      // Black pieces: deep ebony with crisp silver-white top-left highlight and bright rim
+      // Black pieces: luxury hand-rubbed African Ebony & Dark Rosewood with warm satin bronze highlight
       if (options?.isCollar) {
-        c.lerp(new THREE.Color(0x8a8a92), rightShadow * 0.45);
+        c.lerp(new THREE.Color(0x9e7b56), rightShadow * 0.45);
         return c;
       }
-      const spec = Math.pow(dotKey, 2.2);
+      const spec = Math.pow(dotKey, 2.0);
       const rim = Math.max(0, 1 - Math.abs(ny)) * Math.max(0, -nx * 0.6 + nz * 0.4);
-      c.lerp(new THREE.Color(0x9e9ea8), spec * 0.62 + rim * 0.28);
-      c.lerp(new THREE.Color(0x09090b), rightShadow * 0.65);
+      c.lerp(new THREE.Color(0xc89666), spec * 0.62 + rim * 0.32);
+      c.lerp(new THREE.Color(0x110a06), rightShadow * 0.68);
     }
 
     return c;
@@ -220,16 +220,16 @@ export class StauntonGeometryFactory {
           finial: new THREE.Color(0x744d2f)
         }
       : {
-          base: new THREE.Color(0x3a404d),
-          baseRim: new THREE.Color(0x6e778a),
-          stem: new THREE.Color(0x333844),
-          groove: new THREE.Color(0x1e2128),
-          collar: new THREE.Color(0xd5dce8),
-          head: new THREE.Color(0x3e4554),
-          crownTop: new THREE.Color(0x687185),
-          knightBody: new THREE.Color(0x3b4150),
-          knightMane: new THREE.Color(0x8892a6),
-          finial: new THREE.Color(0xb0b8c9)
+          base: new THREE.Color(0x2b1911),
+          baseRim: new THREE.Color(0x6e472f),
+          stem: new THREE.Color(0x24140d),
+          groove: new THREE.Color(0x120a06),
+          collar: new THREE.Color(0xdfc29d),
+          head: new THREE.Color(0x331e14),
+          crownTop: new THREE.Color(0x68422b),
+          knightBody: new THREE.Color(0x2e1b12),
+          knightMane: new THREE.Color(0x8c5e3c),
+          finial: new THREE.Color(0xd4a359)
         };
   }
 

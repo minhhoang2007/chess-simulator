@@ -32,7 +32,7 @@ export class TextureGenerator {
       return this.pieceSpriteCache.get(spriteName)!;
     }
 
-    const texture = this.loader.load(`/textures/pieces/${spriteName}.png?v=4`);
+    const texture = this.loader.load(`${import.meta.env.BASE_URL}textures/pieces/${spriteName}.png?v=6`);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
     texture.magFilter = THREE.LinearFilter;
@@ -45,7 +45,7 @@ export class TextureGenerator {
    * Loads the new high-resolution luxury dark walnut wood table texture.
    */
   public static createWoodTableTexture(maxAnisotropy: number = 8): THREE.Texture {
-    const texture = this.loader.load('/textures/table_wood_new.jpg');
+    const texture = this.loader.load(`${import.meta.env.BASE_URL}textures/table_wood_new.jpg`);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.wrapS = THREE.ClampToEdgeWrapping;
     texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -63,7 +63,7 @@ export class TextureGenerator {
     maxAnisotropy: number = 8
   ): THREE.Texture {
     if (boardTheme === 'rustic-wood') {
-      const texture = this.loader.load('/textures/board_photo.jpg?v=3');
+      const texture = this.loader.load(`${import.meta.env.BASE_URL}textures/board_photo.jpg?v=3`);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = maxAnisotropy;
       return texture;

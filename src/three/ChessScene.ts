@@ -689,40 +689,79 @@ export class ChessScene {
       }
     }
 
-    // No hazy/dimming square tiles covering the pieces or wood!
-    // The wooden board and piece textures remain 100% crisp and un-dimmed.
+    // Crisp, non-hazy tactical square indicators for last move & selected square
+    // Placed strictly on the board floor (renderOrder 8..11, well below pieces at 100+)
+    if (this.lastFrom && this.lastFrom !== this.selectedSquare) {
+      this.addSquareTile(this.lastFrom, 0xf5f682, 0.22);
+    }
+    if (this.lastTo && this.lastTo !== this.selectedSquare) {
+      this.addSquareTile(this.lastTo, 0xf5f682, 0.30);
+    }
+    if (this.selectedSquare) {
+      this.addSquareTile(this.selectedSquare, 0xf5f682, 0.36);
+    }
 
     for (const sq of this.legalMoves) {
       const pos = this.squareToPosition(sq);
       const isCapture = this.piecesMap.has(sq);
 
       if (isCapture) {
-        const ringGeo = new THREE.RingGeometry(0.35, 0.46, 36);
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: 0x000000,
+        // High-visibility tactical capture ring (outer dark contrast ring + warm gold/coral inner target ring)
+        const outerRingGeo = new THREE.RingGeometry(0.35, 0.47, 40);
+        const outerRingMat = new THREE.MeshBasicMaterial({
+          color: 0x140d08,
           transparent: true,
-          opacity: 0.24,
+          opacity: 0.38,
           side: THREE.DoubleSide,
           depthWrite: false
         });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.rotation.x = -Math.PI / 2;
-        ring.position.set(pos.x, 0.224, pos.z);
-        ring.renderOrder = 12;
-        this.highlightGroup.add(ring);
-      } else {
-        const dotGeo = new THREE.CircleGeometry(0.145, 28);
-        const dotMat = new THREE.MeshBasicMaterial({
-          color: 0x000000,
+        const outerRing = new THREE.Mesh(outerRingGeo, outerRingMat);
+        outerRing.rotation.x = -Math.PI / 2;
+        outerRing.position.set(pos.x, 0.223, pos.z);
+        outerRing.renderOrder = 12;
+        this.highlightGroup.add(outerRing);
+
+        const innerRingGeo = new THREE.RingGeometry(0.37, 0.445, 40);
+        const innerRingMat = new THREE.MeshBasicMaterial({
+          color: 0xf59e0b,
           transparent: true,
-          opacity: 0.22,
+          opacity: 0.72,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        });
+        const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
+        innerRing.rotation.x = -Math.PI / 2;
+        innerRing.position.set(pos.x, 0.224, pos.z);
+        innerRing.renderOrder = 13;
+        this.highlightGroup.add(innerRing);
+      } else {
+        // Crisp dual-layer legal move indicator visible on both dark & light squares
+        const haloGeo = new THREE.CircleGeometry(0.16, 32);
+        const haloMat = new THREE.MeshBasicMaterial({
+          color: 0xfff8e7,
+          transparent: true,
+          opacity: 0.26,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        });
+        const halo = new THREE.Mesh(haloGeo, haloMat);
+        halo.rotation.x = -Math.PI / 2;
+        halo.position.set(pos.x, 0.223, pos.z);
+        halo.renderOrder = 12;
+        this.highlightGroup.add(halo);
+
+        const dotGeo = new THREE.CircleGeometry(0.135, 32);
+        const dotMat = new THREE.MeshBasicMaterial({
+          color: 0x140d08,
+          transparent: true,
+          opacity: 0.36,
           side: THREE.DoubleSide,
           depthWrite: false
         });
         const dot = new THREE.Mesh(dotGeo, dotMat);
         dot.rotation.x = -Math.PI / 2;
         dot.position.set(pos.x, 0.224, pos.z);
-        dot.renderOrder = 12;
+        dot.renderOrder = 13;
         this.highlightGroup.add(dot);
       }
     }
@@ -734,15 +773,30 @@ export class ChessScene {
     const planeMat = new THREE.MeshBasicMaterial({
       color,
       transparent: true,
-      opacity,
+      opacity: opacity * 0.55,
       side: THREE.DoubleSide,
       depthWrite: false
     });
     const mesh = new THREE.Mesh(planeGeo, planeMat);
     mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(pos.x, 0.222, pos.z);
-    mesh.renderOrder = 11;
+    mesh.position.set(pos.x, 0.2215, pos.z);
+    mesh.renderOrder = 10;
     this.highlightGroup.add(mesh);
+
+    // Crisp tactical square border frame so the square is immediately readable without hazing the wood
+    const frameGeo = new THREE.RingGeometry(0.44 * Math.SQRT2, 0.492 * Math.SQRT2, 4, 1, Math.PI / 4);
+    const frameMat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: Math.min(0.85, opacity * 1.9),
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+    const frame = new THREE.Mesh(frameGeo, frameMat);
+    frame.rotation.x = -Math.PI / 2;
+    frame.position.set(pos.x, 0.222, pos.z);
+    frame.renderOrder = 11;
+    this.highlightGroup.add(frame);
   }
 
   /**

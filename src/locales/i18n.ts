@@ -7,7 +7,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 1000,
     eloDisplay: '1000',
     category: 'beginner',
-    avatar: '/bots/maria.png',
+    avatar: `${import.meta.env.BASE_URL}bots/maria.png`,
     avatarBg: '#3b82f6',
     personalityTag: 'Club Novice',
     quote: {
@@ -28,7 +28,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 1100,
     eloDisplay: '1100',
     category: 'beginner',
-    avatar: '/bots/sven.png',
+    avatar: `${import.meta.env.BASE_URL}bots/sven.png`,
     avatarBg: '#06b6d4',
     personalityTag: 'Defensive',
     quote: {
@@ -49,7 +49,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 1200,
     eloDisplay: '1200',
     category: 'intermediate',
-    avatar: '/bots/emir.png',
+    avatar: `${import.meta.env.BASE_URL}bots/emir.png`,
     avatarBg: '#14b8a6',
     personalityTag: 'Tactical',
     quote: {
@@ -70,7 +70,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 1300,
     eloDisplay: '1300',
     category: 'intermediate',
-    avatar: '/bots/nelson.png',
+    avatar: `${import.meta.env.BASE_URL}bots/nelson.png`,
     avatarBg: '#f59e0b',
     personalityTag: 'Queen Hunter',
     quote: {
@@ -91,7 +91,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 1500,
     eloDisplay: '1500',
     category: 'intermediate',
-    avatar: '/bots/antonio.png',
+    avatar: `${import.meta.env.BASE_URL}bots/antonio.png`,
     avatarBg: '#10b981',
     personalityTag: 'Balanced',
     quote: {
@@ -112,7 +112,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 1600,
     eloDisplay: '1600',
     category: 'advanced',
-    avatar: '/bots/isabel.png',
+    avatar: `${import.meta.env.BASE_URL}bots/isabel.png`,
     avatarBg: '#ec4899',
     personalityTag: 'Endgame Pro',
     quote: {
@@ -133,7 +133,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 1800,
     eloDisplay: '1800',
     category: 'advanced',
-    avatar: '/bots/wally.png',
+    avatar: `${import.meta.env.BASE_URL}bots/wally.png`,
     avatarBg: '#8b5cf6',
     personalityTag: 'Club Veteran',
     quote: {
@@ -154,7 +154,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 2000,
     eloDisplay: '2000',
     category: 'advanced',
-    avatar: '/bots/li.png',
+    avatar: `${import.meta.env.BASE_URL}bots/li.png`,
     avatarBg: '#6366f1',
     personalityTag: 'Expert',
     quote: {
@@ -175,7 +175,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 2200,
     eloDisplay: '2200',
     category: 'master',
-    avatar: '/bots/noam.png',
+    avatar: `${import.meta.env.BASE_URL}bots/noam.png`,
     avatarBg: '#d97706',
     personalityTag: 'Master',
     quote: {
@@ -196,7 +196,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 2500,
     eloDisplay: '2500',
     category: 'master',
-    avatar: '/bots/gotham.png',
+    avatar: `${import.meta.env.BASE_URL}bots/gotham.png`,
     avatarBg: '#eab308',
     personalityTag: 'THE ROOOOK!',
     quote: {
@@ -217,7 +217,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 2882,
     eloDisplay: '2882',
     category: 'master',
-    avatar: '/bots/magnus.png',
+    avatar: `${import.meta.env.BASE_URL}bots/magnus.png`,
     avatarBg: '#2563eb',
     personalityTag: 'GOAT • World #1',
     quote: {
@@ -238,7 +238,7 @@ export const CHESS_COM_BOTS: BotProfile[] = [
     elo: 3500,
     eloDisplay: '+∞',
     category: 'master',
-    avatar: '/bots/ayanokouji.jpg',
+    avatar: `${import.meta.env.BASE_URL}bots/ayanokouji.jpg`,
     avatarBg: '#dc2626',
     personalityTag: 'White Room • ∞',
     quote: {

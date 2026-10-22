@@ -27,7 +27,7 @@ class StockfishEngineService {
 
     try {
       const wasmSupported = typeof WebAssembly === 'object' && typeof WebAssembly.validate === 'function';
-      const workerUrl = wasmSupported ? '/stockfish.wasm.js' : '/stockfish.js';
+      const workerUrl = wasmSupported ? `${import.meta.env.BASE_URL}stockfish.wasm.js` : `${import.meta.env.BASE_URL}stockfish.js`;
 
       this.worker = new Worker(workerUrl);
       this.worker.onmessage = this.handleWorkerMessage.bind(this);

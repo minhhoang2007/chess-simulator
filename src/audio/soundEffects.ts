@@ -38,7 +38,7 @@ class SoundSynthesizer {
     ];
 
     for (const name of soundNames) {
-      const url = `/sounds/${name}.mp3`;
+      const url = `${import.meta.env.BASE_URL}sounds/${name}.mp3`;
       try {
         const audio = new Audio(url);
         audio.preload = 'auto';
@@ -143,10 +143,10 @@ class SoundSynthesizer {
     this.initContext();
 
     try {
-      const audio = new Audio('/sounds/arya_checkmate.m4a');
+      const audio = new Audio(`${import.meta.env.BASE_URL}sounds/arya_checkmate.m4a`);
       audio.volume = 0.95;
       audio.play().catch(() => {
-        const fallback = new Audio('/sounds/arya_checkmate.wav');
+        const fallback = new Audio(`${import.meta.env.BASE_URL}sounds/arya_checkmate.wav`);
         fallback.volume = 0.95;
         fallback.play().catch(() => {});
       });

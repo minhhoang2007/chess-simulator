@@ -51,7 +51,7 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
     ALL_FOLDERS.forEach(({ folder, count }) => {
       for (let i = 0; i < count; i++) {
         const img = new Image();
-        img.src = `/arya/${folder}/${String(i).padStart(2, '0')}.png`;
+        img.src = `${import.meta.env.BASE_URL}arya/${folder}/${String(i).padStart(2, '0')}.png`;
       }
     });
   }, []);
@@ -122,7 +122,7 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
       : frameIndex;
 
   const frameStr = String(activeIndex % currentCount).padStart(2, '0');
-  const frameSrc = `/arya/${currentFolder}/${frameStr}.png`;
+  const frameSrc = `${import.meta.env.BASE_URL}arya/${currentFolder}/${frameStr}.png`;
 
   return (
     <div className="fixed bottom-5 left-5 z-30 flex items-end gap-2.5 select-none pointer-events-auto">

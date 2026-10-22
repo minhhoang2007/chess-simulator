@@ -1,5 +1,5 @@
 {
-  "name": "liquid-glass-chess-3d",
+  "name": "chess-simulator",
   "version": "1.0.0",
   "type": "module",
   "scripts": {

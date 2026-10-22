@@ -1,4 +1,4 @@
-# ♔ Liquid Glass 3D Chess (Cờ Vua Thủy Tinh Lỏng 3D)
+# ♔ Chess Simulator (Mô Phỏng Cờ Vua 3D)
 
 > **Platform chơi cờ vua 3D phong cách Thủy tinh lỏng (Liquid Glass) & Bàn gỗ tự nhiên, đối đầu Engine Stockfish AI từ 600 đến 2200 Elo. Hỗ trợ song ngữ Tiếng Việt & Tiếng Anh.**
 
@@ -57,7 +57,7 @@
 
 ### 2. Cài đặt các thư viện
 ```bash
-cd liquid-glass-chess-3d
+cd chess-simulator
 npm install
 ```
 
@@ -78,7 +78,7 @@ Thư mục sản phẩm sẽ được tạo tại `./dist`.
 ## 📦 Cấu Trúc Dự Án (Project Structure)
 
 ```
-liquid-glass-chess-3d/
+chess-simulator/
 ├── public/
 │   ├── stockfish.js          # Stockfish engine ASM.js fallback
 │   ├── stockfish.wasm        # Stockfish WebAssembly binary
