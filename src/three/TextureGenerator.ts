@@ -42,15 +42,13 @@ export class TextureGenerator {
   }
 
   /**
-   * Loads the authentic photographic dark rustic wood plank table texture
-   * extracted directly from the user's reference photo.
+   * Loads the new high-resolution luxury dark walnut wood table texture.
    */
   public static createWoodTableTexture(maxAnisotropy: number = 8): THREE.Texture {
-    const texture = this.loader.load('/textures/table_photo.jpg?v=7');
+    const texture = this.loader.load('/textures/table_wood_new.jpg');
     texture.colorSpace = THREE.SRGBColorSpace;
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(2, 2);
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
     texture.anisotropy = maxAnisotropy;
     return texture;
   }
@@ -149,31 +147,42 @@ export class TextureGenerator {
   }
 
   /**
-   * Generates a soft, realistic rectangular ambient occlusion shadow for the entire chessboard,
-   * grounding the 3D board firmly onto the wooden tabletop.
+   * Generates a realistic, triple-layer ambient occlusion & directional contact shadow
+   * for the entire chessboard, firmly grounding the 3D board onto the wooden tabletop.
    */
   public static createBoardShadowTexture(): THREE.CanvasTexture {
-    const size = 512;
+    const size = 1024;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d')!;
 
-    // Dark ambient occlusion footprint
-    const bSize = 360;
-    const bx = (size - bSize) / 2;
-    const by = (size - bSize) / 2;
+    // Board width is 8.4107 on a 12.0 wide shadow plane -> ratio = 8.4107 / 12.0 = 0.7009
+    // On 1024px, the exact board base is 718px wide.
+    const bSize = 718;
 
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.92)';
-    ctx.shadowBlur = 42;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+    // 1. Wide diffuse ambient penumbra (simulates soft room ambient occlusion)
+    ctx.shadowColor = 'rgba(10, 6, 4, 0.45)';
+    ctx.shadowBlur = 85;
+    ctx.fillStyle = 'rgba(10, 6, 4, 0.4)';
     ctx.beginPath();
-    ctx.roundRect(bx, by, bSize, bSize, 28);
+    ctx.roundRect((size - bSize) / 2, (size - bSize) / 2, bSize, bSize, 32);
     ctx.fill();
 
-    // Additional softer outer contact penumbra
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-    ctx.shadowBlur = 75;
+    // 2. Directional soft drop shadow (keylight is at (-3.5, 13.5, 4.8) -> cast toward (+X, +Y))
+    ctx.shadowColor = 'rgba(5, 3, 2, 0.75)';
+    ctx.shadowBlur = 48;
+    ctx.fillStyle = 'rgba(5, 3, 2, 0.7)';
+    ctx.beginPath();
+    ctx.roundRect((size - bSize) / 2 + 14, (size - bSize) / 2 + 10, bSize, bSize, 28);
+    ctx.fill();
+
+    // 3. Deep contact occlusion crease right at the perimeter of the board
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.96)';
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.98)';
+    ctx.beginPath();
+    ctx.roundRect((size - bSize) / 2, (size - bSize) / 2, bSize, bSize, 22);
     ctx.fill();
 
     const texture = new THREE.CanvasTexture(canvas);

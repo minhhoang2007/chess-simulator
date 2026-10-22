@@ -136,32 +136,33 @@ export class ChessScene {
   private setupTableAndBoard() {
     const maxAniso = this.renderer.capabilities.getMaxAnisotropy();
 
-    // 1. Authentic rustic wood plank table with perspective-matching grain
+    // 1. High-resolution solid luxury dark walnut wooden table
     const tableTexture = TextureGenerator.createWoodTableTexture(maxAniso);
     const tableMat = new THREE.MeshStandardMaterial({
       map: tableTexture,
-      roughness: 0.82,
-      metalness: 0.04
+      roughness: 0.62,
+      metalness: 0.02
     });
-    const tableGeo = new THREE.PlaneGeometry(32, 32);
+    // Solid 3D tabletop with realistic thickness and front bevel
+    const tableGeo = new THREE.BoxGeometry(26, 0.6, 26);
     this.tableMesh = new THREE.Mesh(tableGeo, tableMat);
-    this.tableMesh.rotation.x = -Math.PI / 2;
-    this.tableMesh.position.y = -0.222;
+    // Tabletop surface sits exactly at y = -0.221 (just 0.001 below the chessboard bottom at y = -0.220)
+    this.tableMesh.position.set(0, -0.521, 0.2);
     this.scene.add(this.tableMesh);
 
-    // 2. Soft, realistic ambient contact shadow decal directly on the wood tabletop
-    // Grounding the 3D board firmly onto the surface so tilt & resting plane match 100%
+    // 2. Realistic triple-layer ambient occlusion & directional contact shadow
+    // Firmly grounding the 3D board onto the wooden tabletop
     const shadowTex = TextureGenerator.createBoardShadowTexture();
     const shadowMat = new THREE.MeshBasicMaterial({
       map: shadowTex,
       transparent: true,
-      opacity: 0.92,
+      opacity: 0.94,
       depthWrite: false
     });
-    const shadowGeo = new THREE.PlaneGeometry(10.5, 10.5);
+    const shadowGeo = new THREE.PlaneGeometry(12.0, 12.0);
     this.boardShadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
     this.boardShadowMesh.rotation.x = -Math.PI / 2;
-    this.boardShadowMesh.position.y = -0.220;
+    this.boardShadowMesh.position.set(0, -0.2205, 0);
     this.scene.add(this.boardShadowMesh);
 
     // 3. Authentic 1080p 3D Chessboard
@@ -187,19 +188,19 @@ export class ChessScene {
       toneMapped: false
     });
 
-    // Warm solid walnut wood bevel (matching the anime classroom desks and furniture)
+    // Solid dark walnut wood bevel matching the luxury tabletop
     const sideColor =
       this.boardTheme === 'tournament-blue'
-        ? 0x2e1d14 // Warm dark walnut wood bevel
+        ? 0x22150d // Deep dark walnut wood bevel
         : this.boardTheme === 'obsidian-marble'
         ? 0x161f2e
-        : 0x382218;
+        : 0x341f14;
     const sideMat = new THREE.MeshBasicMaterial({
       color: sideColor,
       toneMapped: false
     });
 
-    const bottomMat = new THREE.MeshBasicMaterial({ color: 0x18100a, toneMapped: false });
+    const bottomMat = new THREE.MeshBasicMaterial({ color: 0x110a06, toneMapped: false });
 
     const materials = [sideMat, sideMat, topMat, bottomMat, sideMat, sideMat];
     this.boardMesh = new THREE.Mesh(boardGeo, materials);
