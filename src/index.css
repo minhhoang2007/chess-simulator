@@ -95,3 +95,9 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.35);
 }
+
+/* Alya pose crossfade */
+@keyframes alya-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes alya-fade-out { from { opacity: 1; } to { opacity: 0; } }
+.alya-fade-in { animation: alya-fade-in 240ms ease-out both; }
+.alya-fade-out { animation: alya-fade-out 240ms ease-out both; }

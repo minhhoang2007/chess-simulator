@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 export type AryaState = 'start' | 'thinking' | 'bot_moving' | 'victory' | 'defeat' | 'draw';
 
@@ -18,52 +18,40 @@ interface StateConfig {
   // Optional timeline of [frame, duration] steps that loops. Lets a pose hold
   // still for a while instead of cycling every frame nonstop.
   sequence?: Step[];
+  ambient?: Ambient;
   isStatic?: boolean;
   staticFrame?: number;
 }
 
-// Frames a..b (inclusive, either direction), each shown for `ms`.
-const ramp = (a: number, b: number, ms: number): Step[] => {
-  const steps: Step[] = [];
-  const dir = a <= b ? 1 : -1;
-  for (let i = a; dir > 0 ? i <= b : i >= b; i += dir) steps.push([i, ms]);
-  return steps;
+// Ambient behaviour: hold a still base pose, blink at random intervals and
+// occasionally glance, so she never cycles through frames nonstop.
+interface Ambient {
+  base: number;
+  blink: Step[]; // frames shown for one blink
+  glance?: Step[]; // optional short look-away, returns to base afterwards
+  glanceChance?: number; // 0..1, chance a pause ends in a glance instead of a blink
+}
+
+const THINKING_AMBIENT: Ambient = {
+  base: 0,
+  blink: [[14, 140]],
+  glance: [[8, 1300]],
+  glanceChance: 0.25
 };
 
-// Thinking: mostly still, with a slow head tilt each way and a blink in between.
-const THINKING_SEQUENCE: Step[] = [
-  [0, 2200],
-  ...ramp(1, 4, 130),
-  [4, 1100],
-  ...ramp(3, 1, 130),
-  [0, 1800],
-  [14, 150],
-  [0, 2000],
-  ...ramp(9, 11, 130),
-  [12, 1000],
-  ...ramp(11, 9, 130),
-  [0, 1600]
-];
+const WAITING_AMBIENT: Ambient = {
+  base: 0,
+  blink: [[8, 60], [9, 90], [10, 60]]
+};
 
-// Waiting for the bot: calm, hands together, with an occasional small gesture.
-const WAITING_SEQUENCE: Step[] = [
-  [0, 1800],
-  ...ramp(1, 4, 150),
-  [4, 700],
-  ...ramp(3, 1, 150),
-  [0, 2400],
-  ...ramp(5, 7, 150),
-  [8, 500],
-  [9, 400],
-  [10, 150],
-  ...ramp(11, 15, 150),
-  [0, 2000]
-];
+const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
 const FRAME_CONFIG: Record<AryaState, StateConfig> = {
   start: { folder: 'waving_smooth', count: 12, intervalMs: 90 },
-  thinking: { folder: 'review_smooth', count: 16, intervalMs: 130, sequence: THINKING_SEQUENCE },
-  bot_moving: { folder: 'waiting_smooth', count: 16, intervalMs: 150, sequence: WAITING_SEQUENCE },
+  // Your turn: focused hands-on-hips pose
+  thinking: { folder: 'review_smooth', count: 16, intervalMs: 130, ambient: THINKING_AMBIENT },
+  // Bot's turn: relaxed, hands down
+  bot_moving: { folder: 'idle_smooth', count: 16, intervalMs: 150, ambient: WAITING_AMBIENT },
   // Victory: static smiling pose
   victory: { folder: 'waving', count: 4, intervalMs: 160, isStatic: true, staticFrame: 1 },
   // Defeat: static head-down pose (frame 03)
@@ -134,6 +122,35 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
       return;
     }
 
+    if (config.ambient) {
+      const { base, blink, glance, glanceChance = 0 } = config.ambient;
+      let timer: number;
+      const play = (steps: Step[], done: () => void) => {
+        let i = 0;
+        const next = () => {
+          if (i >= steps.length) return done();
+          const [frame, ms] = steps[i++];
+          setFrameIndex(frame);
+          timer = window.setTimeout(next, ms);
+        };
+        next();
+      };
+      const rest = () => {
+        setFrameIndex(base);
+        timer = window.setTimeout(() => {
+          if (glance && Math.random() < glanceChance) {
+            play(glance, rest);
+          } else {
+            const doubleBlink = Math.random() < 0.15;
+            const steps = doubleBlink ? [...blink, [base, 160] as Step, ...blink] : blink;
+            play(steps, rest);
+          }
+        }, rand(2200, 5200));
+      };
+      rest();
+      return () => window.clearTimeout(timer);
+    }
+
     if (config.sequence) {
       const seq = config.sequence;
       let i = 0;
@@ -180,6 +197,21 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
 
   const frameStr = String(activeIndex % currentCount).padStart(2, '0');
   const frameSrc = `${import.meta.env.BASE_URL}arya/${currentFolder}/${frameStr}.png`;
+
+  // Remember the last frame of the previous pose so it can fade out
+  const lastSrcRef = useRef(frameSrc);
+  const lastFolderRef = useRef(currentFolder);
+  const [fadeFromSrc, setFadeFromSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (lastFolderRef.current !== currentFolder) {
+      setFadeFromSrc(lastSrcRef.current);
+      lastFolderRef.current = currentFolder;
+      const t = window.setTimeout(() => setFadeFromSrc(null), 260);
+      lastSrcRef.current = frameSrc;
+      return () => window.clearTimeout(t);
+    }
+    lastSrcRef.current = frameSrc;
+  }, [currentFolder, frameSrc]);
 
   return (
     <div className="fixed bottom-5 left-5 z-30 flex items-end gap-2.5 select-none pointer-events-auto">
@@ -252,10 +284,21 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
           title="Alya (Your Companion)"
           className="relative w-[110px] h-[130px] sm:w-[126px] sm:h-[148px] cursor-pointer transition-transform duration-300 hover:scale-105"
         >
+          {fadeFromSrc && (
+            <img
+              key={`from-${fadeFromSrc}`}
+              src={fadeFromSrc}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.65)] alya-fade-out"
+              draggable={false}
+            />
+          )}
           <img
+            key={`pose-${currentFolder}`}
             src={frameSrc}
             alt="Alya Companion"
-            className="w-full h-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.65)] transition-opacity duration-75"
+            className={`relative w-full h-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.65)] ${fadeFromSrc ? 'alya-fade-in' : ''}`}
             draggable={false}
           />
         </div>
