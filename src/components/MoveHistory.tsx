@@ -37,7 +37,7 @@ export const MoveHistory: React.FC<MoveHistoryProps> = ({ history, language }) =
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-1 font-mono text-xs">
         {pairedMoves.length === 0 ? (
           <div className="h-full flex items-center justify-center text-neutral-500 text-xs italic py-6">
-            1. e4 ...
+            No moves yet
           </div>
         ) : (
           pairedMoves.map(({ moveNumber, white, black }) => {

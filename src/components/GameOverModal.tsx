@@ -91,7 +91,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                   {isPlayerWinner ? '1' : isDraw ? '½' : '0'}
                 </div>
               </div>
-              <span className="text-xs font-bold text-white truncate max-w-[100px]">You</span>
+              <span className="text-xs font-bold text-white">You</span>
               <span className="text-[10px] text-[#9e9b95] font-medium">Player</span>
             </div>
 
@@ -115,7 +115,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                   {!isPlayerWinner && !isDraw ? '1' : isDraw ? '½' : '0'}
                 </div>
               </div>
-              <span className="text-xs font-bold text-white truncate max-w-[100px]">{selectedBot.name}</span>
+              <span className="text-xs font-bold text-white leading-tight">{selectedBot.name}</span>
               <span className="text-[10px] text-[#9e9b95] font-medium">{selectedBot.eloDisplay || selectedBot.elo} Elo</span>
             </div>
           </div>

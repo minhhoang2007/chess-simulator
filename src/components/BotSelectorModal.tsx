@@ -66,7 +66,7 @@ export const BotSelectorModal: React.FC<BotSelectorModalProps> = ({
                 • {selectedBot.personalityTag}
               </span>
             </div>
-            <p className="text-xs text-[#b8b5b0] mt-0.5 leading-snug line-clamp-1 italic">
+            <p className="text-xs text-[#b8b5b0] mt-0.5 leading-snug italic">
               &ldquo;{selectedBot.quote.en}&rdquo;
             </p>
           </div>
@@ -102,7 +102,7 @@ export const BotSelectorModal: React.FC<BotSelectorModalProps> = ({
                       className="w-9 h-9 rounded-md object-cover shrink-0 bg-[#1e1d1a]"
                     />
                     <div className="min-w-0">
-                      <div className="text-xs font-bold text-white truncate">
+                      <div className="text-xs font-bold text-white leading-tight">
                         {bot.name}
                       </div>
                       <div

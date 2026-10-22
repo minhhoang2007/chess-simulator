@@ -271,7 +271,7 @@ const EN_STRINGS = {
   blacksMoveText: '{num}. Black to move',
   yourTurn: 'Your turn',
   botTurn: "Bot's turn",
-  botThinking: 'Thinking...',
+  botThinking: 'Thinking',
   check: 'Check',
   checkmate: 'Checkmate',
   drawStalemate: 'Draw by Stalemate',

@@ -97,7 +97,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="text-2xl mt-0.5">{theme.preview}</span>
                     <div className="flex-1">
                       <div className="font-semibold text-sm">{theme.label}</div>
-                      <div className="text-[11px] text-[#9e8f83] mt-0.5 line-clamp-2">
+                      <div className="text-[11px] text-[#9e8f83] mt-0.5">
                         {theme.desc}
                       </div>
                     </div>

@@ -559,8 +559,8 @@ export const App: React.FC = () => {
   const statusText = isGameOver
     ? `${gameOverReason} • ${winner === 'w' ? '1-0' : winner === 'b' ? '0-1' : '½-½'}`
     : turn === 'w'
-    ? `${currentMoveNumber}. White to move`
-    : `${currentMoveNumber}... Black to move`;
+    ? `Move ${currentMoveNumber} · White to move`
+    : `Move ${currentMoveNumber} · Black to move`;
 
   const formatClock = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -635,7 +635,7 @@ export const App: React.FC = () => {
               </span>
             </div>
             <div className="text-[10px] text-[#9e9b95] font-medium flex items-center gap-1">
-              <span>{isBotThinking ? 'Thinking...' : selectedBot.personalityTag}</span>
+              <span>{isBotThinking ? 'Thinking' : selectedBot.personalityTag}</span>
               <span className="text-white/40 group-hover:text-white/80 transition-colors">• Change</span>
             </div>
           </div>

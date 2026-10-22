@@ -9,18 +9,61 @@ interface AryaCompanionProps {
   onClickChangeBot?: () => void;
 }
 
+type Step = [frame: number, ms: number];
+
 interface StateConfig {
   folder: string;
   count: number;
   intervalMs: number;
+  // Optional timeline of [frame, duration] steps that loops. Lets a pose hold
+  // still for a while instead of cycling every frame nonstop.
+  sequence?: Step[];
   isStatic?: boolean;
   staticFrame?: number;
 }
 
+// Frames a..b (inclusive, either direction), each shown for `ms`.
+const ramp = (a: number, b: number, ms: number): Step[] => {
+  const steps: Step[] = [];
+  const dir = a <= b ? 1 : -1;
+  for (let i = a; dir > 0 ? i <= b : i >= b; i += dir) steps.push([i, ms]);
+  return steps;
+};
+
+// Thinking: mostly still, with a slow head tilt each way and a blink in between.
+const THINKING_SEQUENCE: Step[] = [
+  [0, 2200],
+  ...ramp(1, 4, 130),
+  [4, 1100],
+  ...ramp(3, 1, 130),
+  [0, 1800],
+  [14, 150],
+  [0, 2000],
+  ...ramp(9, 11, 130),
+  [12, 1000],
+  ...ramp(11, 9, 130),
+  [0, 1600]
+];
+
+// Waiting for the bot: calm, hands together, with an occasional small gesture.
+const WAITING_SEQUENCE: Step[] = [
+  [0, 1800],
+  ...ramp(1, 4, 150),
+  [4, 700],
+  ...ramp(3, 1, 150),
+  [0, 2400],
+  ...ramp(5, 7, 150),
+  [8, 500],
+  [9, 400],
+  [10, 150],
+  ...ramp(11, 15, 150),
+  [0, 2000]
+];
+
 const FRAME_CONFIG: Record<AryaState, StateConfig> = {
   start: { folder: 'waving_smooth', count: 12, intervalMs: 90 },
-  thinking: { folder: 'review_smooth', count: 16, intervalMs: 110 },
-  bot_moving: { folder: 'waiting_smooth', count: 16, intervalMs: 105 },
+  thinking: { folder: 'review_smooth', count: 16, intervalMs: 130, sequence: THINKING_SEQUENCE },
+  bot_moving: { folder: 'waiting_smooth', count: 16, intervalMs: 150, sequence: WAITING_SEQUENCE },
   // Victory: static smiling pose
   victory: { folder: 'waving', count: 4, intervalMs: 160, isStatic: true, staticFrame: 1 },
   // Defeat: static head-down pose (frame 03)
@@ -91,12 +134,26 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
       return;
     }
 
+    if (config.sequence) {
+      const seq = config.sequence;
+      let i = 0;
+      let timer: number;
+      const show = () => {
+        const [frame, ms] = seq[i];
+        setFrameIndex(frame);
+        i = (i + 1) % seq.length;
+        timer = window.setTimeout(show, ms);
+      };
+      show();
+      return () => window.clearTimeout(timer);
+    }
+
     setFrameIndex(0);
     const id = window.setInterval(() => {
       setFrameIndex((prev) => (prev + 1) % config.count);
     }, config.intervalMs);
     return () => window.clearInterval(id);
-  }, [state, hasWavedOnce, config.folder, config.count, config.intervalMs, config.isStatic, config.staticFrame]);
+  }, [state, hasWavedOnce, config]);
 
   const currentFolder =
     state === 'start'
@@ -141,31 +198,31 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
           {state === 'start' && (
             <>
               <span className="text-sm">🌸</span>
-              <span>Ready to play! Let&apos;s go!</span>
+              <span className="whitespace-nowrap">Ready to play!</span>
             </>
           )}
           {state === 'victory' && (
             <>
               <span className="text-sm">🎉</span>
-              <span>Checkmate! We won!</span>
+              <span className="whitespace-nowrap">Checkmate! We won!</span>
             </>
           )}
           {state === 'defeat' && (
             <>
               <span className="text-sm">🥺</span>
-              <span>Nice try! Rematch?</span>
+              <span className="whitespace-nowrap">Nice try! Rematch?</span>
             </>
           )}
           {state === 'draw' && (
             <>
               <span className="text-sm">🤝</span>
-              <span>Good game! Draw!</span>
+              <span className="whitespace-nowrap">Good game! Draw!</span>
             </>
           )}
           {state === 'thinking' && (
             <>
               <span className="text-sm">🤔</span>
-              <span className="text-[#e2ded9]">Your turn!</span>
+              <span className="text-[#e2ded9] whitespace-nowrap">Your turn!</span>
               <span className="inline-flex gap-0.5 ml-0.5 items-center">
                 <span className="w-1 h-1 rounded-full bg-[#81b64c] animate-ping" />
                 <span className="w-1 h-1 rounded-full bg-[#81b64c]" />
@@ -175,7 +232,7 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
           {state === 'bot_moving' && (
             <>
               <span className="text-sm">👀</span>
-              <span className="text-[#c8c2b8]">Waiting for {botName}...</span>
+              <span className="text-[#c8c2b8] whitespace-nowrap">{botName.split(' ')[0]}&apos;s move</span>
             </>
           )}
 
