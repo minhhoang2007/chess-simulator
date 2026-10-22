@@ -21,7 +21,8 @@ const FRAME_CONFIG: Record<AryaState, StateConfig> = {
   start: { folder: 'waving', count: 4, intervalMs: 220 },
   thinking: { folder: 'review', count: 6, intervalMs: 180 },
   bot_moving: { folder: 'waiting', count: 6, intervalMs: 140 },
-  victory: { folder: 'jumping', count: 5, intervalMs: 115 },
+  // Victory: celebratory smiling pose, static (no continuous jumping)
+  victory: { folder: 'waving', count: 4, intervalMs: 160, isStatic: true, staticFrame: 1 },
   // Defeat: droop head/face down (frame 03.png) and stay static (no animation)
   defeat: { folder: 'failed', count: 8, intervalMs: 160, isStatic: true, staticFrame: 3 },
   draw: { folder: 'waving', count: 4, intervalMs: 160 }
@@ -70,7 +71,7 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
         <div
           className={`mb-1.5 px-3 py-1.5 rounded-2xl shadow-lg border text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 ${
             state === 'victory'
-              ? 'bg-[#81b64c] text-white border-[#9ad061] animate-bounce shadow-[0_6px_20px_rgba(129,182,76,0.45)]'
+              ? 'bg-[#81b64c] text-white border-[#9ad061] shadow-[0_6px_20px_rgba(129,182,76,0.35)]'
               : state === 'defeat'
               ? 'bg-[#262421]/95 text-[#e2ded9] border-white/15'
               : 'bg-[#262421]/95 text-[#f0ece6] border-white/15 backdrop-blur-md'
@@ -127,13 +128,11 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
           />
         </div>
 
-        {/* Animated Chibi Arya Sprite (enlarged by ~10%+) */}
+        {/* Chibi Arya Sprite (enlarged by ~10%+) */}
         <div
           onClick={onClickChangeBot}
           title="Click to change bot / difficulty"
-          className={`relative w-[110px] h-[130px] sm:w-[126px] sm:h-[148px] cursor-pointer transition-transform duration-300 hover:scale-105 ${
-            state === 'victory' ? 'animate-arya-celebrate' : ''
-          }`}
+          className="relative w-[110px] h-[130px] sm:w-[126px] sm:h-[148px] cursor-pointer transition-transform duration-300 hover:scale-105"
         >
           <img
             src={frameSrc}
