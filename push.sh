@@ -1,29 +1,18 @@
 #!/usr/bin/env bash
-# Script đẩy source code lên GitHub minhhoang2007
+# Push the main branch to GitHub (minhhoang2007/chess-simulator).
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_DIR"
 
-echo "=========================================================="
-echo " ♔ ĐẨY DỰ ÁN LÊN GITHUB: minhhoang2007/chess-simulator"
-echo "=========================================================="
-echo ""
-echo "1. Đảm bảo bạn đã bấm 'New Repository' trên tab GitHub đang mở"
-echo "   với tên: chess-simulator"
-echo "   (hoặc bất kỳ tên nào bạn muốn, có thể sửa git remote)"
-echo ""
-echo "2. Đang tiến hành push nhánh 'main' lên origin..."
-echo ""
+echo "Pushing main to github.com/minhhoang2007/chess-simulator ..."
 
-git push -u origin main
-
-if [ $? -eq 0 ]; then
+if git push -u origin main; then
   echo ""
-  echo "✅ ĐÃ PUSH THÀNH CÔNG LÊN GITHUB!"
-  echo "🔗 Xem mã nguồn tại: https://github.com/minhhoang2007/chess-simulator"
+  echo "Done. Code: https://github.com/minhhoang2007/chess-simulator"
+  echo "Live site (updates in about a minute): https://minhhoang2007.github.io/chess-simulator/"
 else
   echo ""
-  echo "⚠️ Nếu bạn cần dùng GitHub Token (PAT) hoặc SSH:"
-  echo "   Cách 1 (Dùng Token): git remote set-url origin https://<TOKEN>@github.com/minhhoang2007/chess-simulator.git"
-  echo "   Cách 2 (Dùng SSH):   git remote set-url origin git@github.com:minhhoang2007/chess-simulator.git"
-  echo "   Sau đó chạy lại: ./push.sh"
+  echo "Push failed. If GitHub asks for a password, use a personal access token"
+  echo "(GitHub > Settings > Developer settings > Personal access tokens),"
+  echo "or switch to SSH:"
+  echo "  git remote set-url origin git@github.com:minhhoang2007/chess-simulator.git"
 fi
