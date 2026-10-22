@@ -53,7 +53,7 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
         className="fixed inset-0 bg-black/55 backdrop-blur-xs transition-opacity"
       />
 
-      {/* Chess.com Dark Slate Drawer */}
+      {/* Drawer */}
       <div className="relative w-76 max-w-[85vw] h-full bg-[#262421] text-[#f1f1f1] border-r border-white/10 shadow-2xl flex flex-col z-10 animate-slideRight">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/8 bg-[#1f1e1b]">
@@ -216,7 +216,7 @@ export const MenuDrawer: React.FC<MenuDrawerProps> = ({
             </div>
           </div>
 
-          {/* Move History (Chess.com notation list) */}
+          {/* Move History */}
           <div className="pt-3 border-t border-white/8">
             <label className="block text-xs font-semibold text-[#9e9b95] mb-1.5">
               Moves ({moveHistory.length})

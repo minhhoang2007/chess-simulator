@@ -7,8 +7,7 @@ export class TextureGenerator {
   private static pieceSpriteCache: Map<string, THREE.Texture> = new Map();
 
   /**
-   * Loads the authentic 1080p lossless piece sprite extracted directly from
-   * com.jetstartgames.chess for the given piece type, color, and column (0..7).
+   * Loads the piece sprite for the given piece type, color, and column (0..7).
    */
   public static getPieceSpriteTexture(
     type: PieceSymbol,
@@ -54,8 +53,7 @@ export class TextureGenerator {
   }
 
   /**
-   * Loads the authentic photographic 8x8 maple & walnut chessboard texture
-   * extracted directly from the 1080p reference image (or fallback theme).
+   * Loads the 8x8 maple & walnut chessboard texture (or a fallback theme).
    */
   public static createChessboardTexture(
     boardTheme: BoardTheme,
@@ -81,7 +79,7 @@ export class TextureGenerator {
     const sqSize = boardArea / 8;
 
     const isMarble = boardTheme === 'obsidian-marble';
-    // Chess.com authentic Tournament Blue & Ivory palette with warm wooden rim
+    // Tournament blue & ivory palette with a wooden rim
     ctx.fillStyle = isMarble ? '#1e293b' : '#2b1c13';
     ctx.fillRect(0, 0, size, size);
 
@@ -95,7 +93,7 @@ export class TextureGenerator {
         const isLight = (row + col) % 2 === 0;
         const x = borderSize + col * sqSize;
         const y = borderSize + row * sqSize;
-        // Chess.com authentic soft Ivory (#eaecd0) and classic Tournament Blue (#4b7399)
+        // Ivory (#eaecd0) and blue (#4b7399)
         ctx.fillStyle = isLight
           ? (isMarble ? '#e2e8f0' : '#eaecd0')
           : (isMarble ? '#334155' : '#4b7399');
@@ -110,7 +108,7 @@ export class TextureGenerator {
       const files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
       const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
       for (let c = 0; c < 8; c++) {
-        // Subtle gold-tinted coordinate letters matching the classroom wood tones
+        // Gold-tinted coordinate letters
         ctx.fillStyle = '#f5ede3';
         ctx.fillText(files[c], borderSize + c * sqSize + sqSize / 2, size - borderSize / 2);
       }
@@ -158,7 +156,7 @@ export class TextureGenerator {
     const ctx = canvas.getContext('2d')!;
 
     // Board width is 8.4107 on a 12.0 wide shadow plane -> ratio = 8.4107 / 12.0 = 0.7009
-    // On 1024px, the exact board base is 718px wide.
+    // On 1024px, the board base is 718px wide.
     const bSize = 718;
 
     // 1. Wide diffuse ambient penumbra (simulates soft room ambient occlusion)

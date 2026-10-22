@@ -21,9 +21,9 @@ const FRAME_CONFIG: Record<AryaState, StateConfig> = {
   start: { folder: 'waving_smooth', count: 12, intervalMs: 90 },
   thinking: { folder: 'review_smooth', count: 16, intervalMs: 110 },
   bot_moving: { folder: 'waiting_smooth', count: 16, intervalMs: 105 },
-  // Victory: celebratory smiling pose, static (no continuous jumping)
+  // Victory: static smiling pose
   victory: { folder: 'waving', count: 4, intervalMs: 160, isStatic: true, staticFrame: 1 },
-  // Defeat: droop head/face down (frame 03.png) and stay static (no animation)
+  // Defeat: static head-down pose (frame 03)
   defeat: { folder: 'failed', count: 8, intervalMs: 160, isStatic: true, staticFrame: 3 },
   draw: { folder: 'waving_smooth', count: 12, intervalMs: 100 }
 };
@@ -128,7 +128,7 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
     <div className="fixed bottom-5 left-5 z-30 flex items-end gap-2.5 select-none pointer-events-auto">
       {/* Character + Floating Emotion Bubble */}
       <div className="relative flex flex-col items-center">
-        {/* Speech / Emotion Bubble above Alya (Your Companion) */}
+        {/* Speech bubble */}
         <div
           className={`mb-1.5 px-3 py-1.5 rounded-2xl shadow-lg border text-xs font-semibold flex items-center gap-1.5 transition-all duration-300 ${
             state === 'victory'
@@ -189,7 +189,7 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
           />
         </div>
 
-        {/* Chibi Alya Companion Sprite */}
+        {/* Companion sprite */}
         <div
           onClick={onClickChangeBot}
           title="Alya (Your Companion)"
@@ -203,7 +203,7 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
           />
         </div>
 
-        {/* Companion Badge under Alya (clearly marks Alya as your partner, not the opponent) */}
+        {/* Companion badge */}
         <div className="mt-0.5 px-3 py-1 rounded-lg bg-[#262421]/90 border border-white/12 shadow-md flex items-center gap-1.5">
           <span className="text-xs">🌸</span>
           <span className="text-xs font-bold text-white tracking-tight">Alya</span>

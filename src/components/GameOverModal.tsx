@@ -30,7 +30,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   const isPlayerWinner = winner === playerColor;
   const isDraw = winner === 'draw';
 
-  // Chess.com style banner colors & texts
+  // Banner colors & text
   const bannerBg = isPlayerWinner
     ? 'bg-gradient-to-r from-[#427c36] via-[#529344] to-[#427c36]'
     : isDraw
@@ -57,7 +57,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           <X className="w-4 h-4" />
         </button>
 
-        {/* 1. Chess.com Signature Top Result Banner */}
+        {/* 1. Result banner */}
         <div className={`pt-6 pb-5 px-6 text-center text-white relative shadow-md ${bannerBg}`}>
           <div className="flex items-center justify-center gap-2 mb-1">
             {isPlayerWinner ? (
@@ -126,7 +126,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
             <span>Opponent: <strong className="text-white">{selectedBot.name}</strong></span>
           </div>
 
-          {/* 3. Primary CTA Buttons (Chess.com layout) */}
+          {/* 3. Action buttons */}
           <div className="flex flex-col gap-2 pt-1">
             <button
               onClick={onRematch}

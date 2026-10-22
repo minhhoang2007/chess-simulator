@@ -23,12 +23,12 @@ export const App: React.FC = () => {
   const [isBotThinking, setIsBotThinking] = useState<boolean>(false);
   const [hintInfo, setHintInfo] = useState<{ from: Square; to: Square } | null>(null);
 
-  // Checkmated King Square & 2D Screen Position for Chess.com Checkmate Popup
+  // Checkmated king square & its screen position for the checkmate badge
   const [matedKingSquare, setMatedKingSquare] = useState<Square | null>(null);
   const [matedKingScreenPos, setMatedKingScreenPos] = useState<{ x: number; y: number } | null>(null);
   const matedKingSquareRef = useRef<Square | null>(null);
 
-  // Settings: Default Board Blue ('tournament-blue') + Classic Wood ('classic-wood')
+  // Settings
   const [settings, setSettings] = useState<GameSettings>({
     language: 'en',
     pieceTheme: 'classic-wood',
@@ -40,7 +40,7 @@ export const App: React.FC = () => {
     cameraTilt: 'photo'
   });
 
-  // Current Bot: Defaults to Arya (1500) or Jimmy (600); Bot Selector opens immediately on launch
+  // Current bot
   const [selectedBot, setSelectedBot] = useState<BotProfile>(CHESS_COM_BOTS[0]);
   const [playerColor, setPlayerColor] = useState<Color>('w');
   const [timeControl, setTimeControl] = useState<TimeControl>('unlimited');
@@ -51,7 +51,7 @@ export const App: React.FC = () => {
   const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
   const [, setCapturedPieces] = useState<CapturedPieces>({ w: [], b: [] });
 
-  // Drawers & Modals — Open BotSelectorModal immediately on page load!
+  // Drawers & modals (the bot selector opens on launch)
   const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState<boolean>(false);
   const [isBotModalOpen, setIsBotModalOpen] = useState<boolean>(true);
   const [isGameOverModalOpen, setIsGameOverModalOpen] = useState<boolean>(false);
@@ -112,7 +112,7 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Sync playerColor & turn lock into 3D scene so player can never drag opponent pieces or move during bot's turn
+  // Sync player color and turn lock into the 3D scene
   useEffect(() => {
     const canPlayerMove = !isGameOver && !isBotThinking && turn === playerColor;
     sceneRef.current?.setInteractionState(playerColor, canPlayerMove);
@@ -130,7 +130,7 @@ export const App: React.FC = () => {
     }
   }, [settings.pieceTheme, settings.boardTheme, settings.showCoordinates, settings.cameraTilt]);
 
-  // Smoothly zoom board out in starting/preview interface, and zoom into game when starting
+  // Zoom out for the bot selector preview, zoom in when the game starts
   useEffect(() => {
     sceneRef.current?.setPreviewMode(isBotModalOpen);
   }, [isBotModalOpen]);
@@ -193,7 +193,7 @@ export const App: React.FC = () => {
   const handleSquareSelect = (square: Square) => {
     if (isGameOver || isBotThinking || chess.turn() !== playerColor) return;
 
-    // Toggle off: if user clicks the currently selected piece again, deselect it!
+    // Clicking the selected piece again deselects it
     if (selectedSquareRef.current === square) {
       selectedSquareRef.current = null;
       sceneRef.current?.setSelection(null, []);
@@ -295,7 +295,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // 6. Bot Move Execution (Human-speed response)
+  // 6. Bot Move Execution
   const triggerBot = useCallback((botOverride?: BotProfile, colOverride?: Color) => {
     const activeBot = botOverride || selectedBot;
     const activePlayerColor = colOverride || playerColor;
@@ -371,7 +371,7 @@ export const App: React.FC = () => {
     onCamera: updateMatedKingScreenCoords
   };
 
-  // 7. Checkmate & Game End (Chess.com Checkmate '#' Popup on King & Modal)
+  // 7. Checkmate & Game End
   const checkGameEnd = () => {
     if (chess.isCheckmate()) {
       setIsGameOver(true);
@@ -389,7 +389,7 @@ export const App: React.FC = () => {
       }
 
       sounds.playVictory();
-      // Arya Anime Voice: "Checkmate! Congratulations!"
+      // Arya's checkmate voice line
       setTimeout(() => {
         sounds.playAryaCheckmate();
       }, 400);
@@ -431,7 +431,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // 8. New Game / Restart (Instant setup with Chess.com game-start sound, no cascade)
+  // 8. New Game / Restart
   const handleStartGame = (bot?: BotProfile, col?: Color, tc?: TimeControl) => {
     chess.reset();
     selectedSquareRef.current = null;
@@ -553,7 +553,7 @@ export const App: React.FC = () => {
     ? 'bot_moving'
     : 'thinking';
 
-  // Clean Chess.com style turn & move text
+  // Turn & move status text
   const currentMoveNumber = Math.floor(moveHistory.length / 2) + 1;
   const lastMoveSan = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1].san : null;
   const statusText = isGameOver
@@ -570,12 +570,12 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#161512] text-[#f1f1f1] select-none font-sans">
-      {/* 3D Viewport: Fullscreen board preview on authentic wood plank table */}
+      {/* 3D viewport */}
       <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full cursor-pointer z-10" />
 
-      {/* Main Chessboard HUD: Always available */}
+      {/* Main HUD */}
       {/* ========================================================
-          CHESS.COM ON-BOARD CHECKMATE SPEECH CALLOUT
+          CHECKMATE BADGE
           ======================================================== */}
       {isGameOver && matedKingSquare && matedKingScreenPos && (
         <div
@@ -587,7 +587,7 @@ export const App: React.FC = () => {
           onClick={() => setIsGameOverModalOpen(true)}
           title="Click to view Game Over details"
         >
-          {/* Authentic Chess.com Red Checkmate Speech Badge */}
+          {/* Checkmate badge */}
           <div className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#b32b28] via-[#ca3431] to-[#b32b28] border border-white/35 shadow-[0_8px_24px_rgba(202,52,49,0.7),0_2px_8px_rgba(0,0,0,0.6)] flex items-center gap-2 text-white">
             <div className="w-5 h-5 rounded-full bg-white/25 border border-white/40 flex items-center justify-center font-black text-xs leading-none">
               #
@@ -597,13 +597,13 @@ export const App: React.FC = () => {
               {winner === 'w' ? '1-0' : '0-1'}
             </span>
           </div>
-          {/* Speech Bubble Arrow pointing straight down at King */}
+          {/* Badge arrow pointing at the king */}
           <div className="w-0 h-0 border-x-[6px] border-x-transparent border-t-[7px] border-t-[#ca3431] -mt-[0.5px] drop-shadow-sm" />
         </div>
       )}
 
       {/* ========================================================
-          TOP-CENTER OPPONENT BOT CARD (Chess.com style)
+          TOP-CENTER OPPONENT BOT CARD
           ======================================================== */}
       <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
         <button
@@ -643,7 +643,7 @@ export const App: React.FC = () => {
       </div>
 
       {/* ========================================================
-          TOP-LEFT CORNER CONTROLS (Clean Chess.com Dark Slate Icons)
+          TOP-LEFT CORNER CONTROLS
           ======================================================== */}
       <div className="absolute top-4 left-4 z-20 flex flex-col gap-2.5">
         <button
@@ -706,7 +706,7 @@ export const App: React.FC = () => {
       </div>
 
       {/* ========================================================
-          ARYA ANIME COMPANION (Thinking emotion & Victory Jump!)
+          ARYA COMPANION
           ======================================================== */}
       <AryaCompanion
         state={aryaState}
@@ -716,7 +716,7 @@ export const App: React.FC = () => {
       />
 
       {/* ========================================================
-          CLEAN CHESS.COM-STYLE BOTTOM BAR
+          BOTTOM STATUS BAR
           ======================================================== */}
       <div className="absolute bottom-3 left-0 right-0 z-20 pointer-events-none flex justify-center px-4">
         <div className="pointer-events-auto px-4 py-1.5 rounded-lg bg-[#262421]/90 border border-white/10 shadow-lg backdrop-blur-md flex items-center gap-4 text-xs">
@@ -782,7 +782,7 @@ export const App: React.FC = () => {
         onUpdateSettings={(newVals) => setSettings((s) => ({ ...s, ...newVals }))}
       />
 
-      {/* CHESS.COM GAME OVER MODAL */}
+      {/* GAME OVER MODAL */}
       <GameOverModal
         isOpen={isGameOverModalOpen}
         winner={winner}
@@ -811,7 +811,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* BOT SELECTOR MODAL (Floating modal with preview board visible behind) */}
+      {/* BOT SELECTOR MODAL */}
       <BotSelectorModal
         isOpen={isBotModalOpen}
         selectedBot={selectedBot}

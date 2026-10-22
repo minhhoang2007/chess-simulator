@@ -13,7 +13,7 @@ export interface BotProfile {
   elo: number;
   eloDisplay?: string; // e.g., "+∞" for Ayanokouji Kiyotaka
   category: 'beginner' | 'intermediate' | 'advanced' | 'master';
-  avatar: string; // official Chess.com / anime avatar
+  avatar: string;
   avatarBg: string;
   quote: {
     en: string;

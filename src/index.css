@@ -47,7 +47,7 @@
   animation: checkmatePop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
 }
 
-/* Roshidere Anime Sakura Petals Keyframes */
+/* Sakura petal keyframes */
 @keyframes sakuraFall {
   0% {
     transform: translateY(-20px) translateX(0);

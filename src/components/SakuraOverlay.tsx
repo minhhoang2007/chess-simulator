@@ -16,7 +16,7 @@ export const SakuraOverlay: React.FC = () => {
       id: i,
       left: Math.random() * 100, // 0..100vw
       delay: Math.random() * 10,
-      duration: 12 + Math.random() * 10, // 12..22s slow graceful drift
+      duration: 12 + Math.random() * 10, // 12..22s
       size: 10 + Math.random() * 8, // 10..18px
       swayDuration: 3 + Math.random() * 3,
       opacity: 0.55 + Math.random() * 0.35

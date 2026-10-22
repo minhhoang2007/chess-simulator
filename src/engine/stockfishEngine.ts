@@ -116,7 +116,7 @@ class StockfishEngineService {
 
     this.sendCommand('stop');
     if (bot.elo >= 2500) {
-      // Unthrottled Master / Grandmaster / White Room (+∞) Stockfish strength
+      // Full Stockfish strength for the strongest bots
       this.sendCommand('setoption name UCI_LimitStrength value false');
       this.sendCommand(`setoption name Skill Level value ${bot.skillLevel}`);
     } else {
@@ -140,14 +140,13 @@ class StockfishEngineService {
 
     const deliverWithHumanTempo = (res: BestMoveResult) => {
       const elapsed = performance.now() - startTime;
-      // Bot response tempo slowed down by another 1.5x (~520ms - 720ms)
-      // Feels thoughtful, comfortable, natural human-like cafe tempo
+      // Bot response delay (~520-720ms)
       const targetMinDelay = 520 + Math.random() * 200;
       const remaining = Math.max(80, targetMinDelay - elapsed);
       window.setTimeout(() => onDone(res), remaining);
     };
 
-    // Nelson Personality: loves early Queen moves!
+    // Nelson likes early queen moves
     if (bot.id === 'nelson' && game.history().length < 6) {
       const legalMoves = game.moves({ verbose: true });
       const queenMove = legalMoves.find((m) => m.piece === 'q');
@@ -161,7 +160,7 @@ class StockfishEngineService {
       }
     }
 
-    // Blunder injection for beginner bots (Jimmy 600, Zara 850)
+    // Blunder injection for beginner bots
     if (bot.blunderRate > 0 && Math.random() < bot.blunderRate) {
       const legalMoves = game.moves({ verbose: true });
       if (legalMoves.length > 0) {

@@ -87,7 +87,7 @@ export class StauntonGeometryFactory {
         return c;
       }
       if (options?.isStem) {
-        // Distinctive half-lit / half-shaded cylinder stem like A1 Rook & E1 King in photo
+        // Half-lit / half-shaded cylinder stem
         if (nx > 0.05) {
           const shadowT = Math.min(1, (nx - 0.05) * 1.45);
           c.lerp(new THREE.Color(0x382a1e), shadowT * 0.78);
@@ -100,7 +100,7 @@ export class StauntonGeometryFactory {
       c.lerp(new THREE.Color(0xfcf7ec), Math.pow(dotKey, 1.6) * 0.52);
       c.lerp(new THREE.Color(0x6e5c49), Math.pow(rightShadow, 1.2) * 0.55);
     } else {
-      // Black pieces: luxury hand-rubbed African Ebony & Dark Rosewood with warm satin bronze highlight
+      // Black pieces: ebony & rosewood with a satin bronze highlight
       if (options?.isCollar) {
         c.lerp(new THREE.Color(0x9e7b56), rightShadow * 0.45);
         return c;
@@ -352,7 +352,7 @@ export class StauntonGeometryFactory {
       return { color: p.collar, isCollar: true };
     });
 
-    // Sculpted horse head facing right (+X) with fuller chest/belly curve
+    // Horse head facing right (+X)
     const horseShape = new THREE.Shape();
     horseShape.moveTo(-0.095, 0.20);
     horseShape.quadraticCurveTo(0.20, 0.25, 0.145, 0.39);
@@ -456,18 +456,18 @@ export class StauntonGeometryFactory {
       new THREE.Vector2(0.27, 0.075),
       new THREE.Vector2(0.28, 0.11),
       new THREE.Vector2(0.235, 0.155),
-      // Elongated graceful stem
+      // Stem
       new THREE.Vector2(0.15, 0.27),
       new THREE.Vector2(0.13, 0.45),
       // Collar
       new THREE.Vector2(0.20, 0.49),
       new THREE.Vector2(0.20, 0.53),
       new THREE.Vector2(0.155, 0.555),
-      // Coronet cup flared wider for clearer crown points
+      // Coronet cup
       new THREE.Vector2(0.21, 0.64),
       new THREE.Vector2(0.24, 0.72),
       new THREE.Vector2(0.175, 0.685),
-      // Flatter, less bulbous inner dome
+      // Inner dome
       new THREE.Vector2(0.125, 0.69),
       new THREE.Vector2(0.095, 0.735),
       new THREE.Vector2(0.035, 0.758),
@@ -514,7 +514,7 @@ export class StauntonGeometryFactory {
       new THREE.Vector2(0.28, 0.08),
       new THREE.Vector2(0.29, 0.115),
       new THREE.Vector2(0.25, 0.16),
-      // Thicker, broader stem
+      // Stem
       new THREE.Vector2(0.185, 0.27),
       new THREE.Vector2(0.168, 0.41),
       // Broad Double Collar

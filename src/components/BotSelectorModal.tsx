@@ -47,7 +47,7 @@ export const BotSelectorModal: React.FC<BotSelectorModalProps> = ({
           </button>
         </div>
 
-        {/* Selected Bot Spotlight (Chess.com style) */}
+        {/* Selected bot */}
         <div className="px-5 py-3.5 bg-[#21201d] border-b border-white/8 flex items-center gap-3.5">
           <div className="w-14 h-14 rounded-xl bg-[#2b2926] border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
             <img

@@ -58,7 +58,7 @@ export class ChessScene {
   // Orientation
   private isFlipped = false;
 
-  // Calibrated Camera Perspective (FOV 29.2 makes the board slightly smaller & sleeker on the stone table)
+  // Camera perspective
   private readonly PHOTO_CAMERA_FOV = 29.2;
   private readonly PHOTO_CAMERA_POS = new THREE.Vector3(0, 13.74, 9.282);
   private readonly PHOTO_CAMERA_TARGET = new THREE.Vector3(0, 0.22, 0.592);
@@ -70,7 +70,7 @@ export class ChessScene {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x161512);
 
-    // 2. Camera (exact perspective calibration of com.jetstartgames.chess)
+    // 2. Camera
     const aspect = container.clientWidth / container.clientHeight;
     this.camera = new THREE.PerspectiveCamera(this.PHOTO_CAMERA_FOV, aspect, 0.1, 100);
     this.camera.position.copy(this.PHOTO_CAMERA_POS);
@@ -91,7 +91,7 @@ export class ChessScene {
 
     this.contactShadowTex = TextureGenerator.createContactShadowTexture();
 
-    // Shared 1.6x1.6 billboard geometry shifted +0.15 along local Y (exact extraction box of the 1080p sprites)
+    // Shared 1.6x1.6 billboard geometry, shifted +0.15 along local Y to fit the piece sprites
     this.spritePlaneGeo = new THREE.PlaneGeometry(1.6, 1.6);
     this.spritePlaneGeo.translate(0, 0.15, 0);
 
@@ -138,7 +138,7 @@ export class ChessScene {
   private setupTableAndBoard() {
     const maxAniso = this.renderer.capabilities.getMaxAnisotropy();
 
-    // 1. High-resolution solid luxury dark walnut wooden table
+    // 1. Walnut table
     const tableTexture = TextureGenerator.createWoodTableTexture(maxAniso);
     const tableMat = new THREE.MeshStandardMaterial({
       map: tableTexture,
@@ -148,12 +148,11 @@ export class ChessScene {
     // Solid 3D tabletop with realistic thickness and front bevel
     const tableGeo = new THREE.BoxGeometry(26, 0.6, 26);
     this.tableMesh = new THREE.Mesh(tableGeo, tableMat);
-    // Tabletop surface sits exactly at y = -0.221 (just 0.001 below the chessboard bottom at y = -0.220)
+    // Tabletop surface sits at y = -0.221, just below the board bottom at y = -0.220
     this.tableMesh.position.set(0, -0.521, 0.2);
     this.scene.add(this.tableMesh);
 
-    // 2. Realistic triple-layer ambient occlusion & directional contact shadow
-    // Firmly grounding the 3D board onto the wooden tabletop
+    // 2. Ambient occlusion and contact shadow under the board
     const shadowTex = TextureGenerator.createBoardShadowTexture();
     const shadowMat = new THREE.MeshBasicMaterial({
       map: shadowTex,
@@ -167,7 +166,7 @@ export class ChessScene {
     this.boardShadowMesh.position.set(0, -0.2205, 0);
     this.scene.add(this.boardShadowMesh);
 
-    // 3. Authentic 1080p 3D Chessboard
+    // 3. Chessboard
     this.buildBoard();
   }
 
@@ -190,7 +189,7 @@ export class ChessScene {
       toneMapped: false
     });
 
-    // Solid dark walnut wood bevel matching the luxury tabletop
+    // Walnut bevel matching the table
     const sideColor =
       this.boardTheme === 'tournament-blue'
         ? 0x22150d // Deep dark walnut wood bevel
@@ -290,7 +289,7 @@ export class ChessScene {
     mesh.position.copy(pos);
 
     if (this.pieceTheme === 'classic-wood') {
-      // Align billboard plane with the camera image plane for 1:1 pixel match with com.jetstartgames.chess
+      // Align the billboard with the camera image plane
       mesh.quaternion.copy(this.camera.quaternion);
       // Painter's algorithm back-to-front sorting by Z (front ranks draw on top of back ranks)
       mesh.renderOrder = 100 + Math.round((pos.z + 5.0) * 100) + Math.round((pos.y - 0.22) * 500);
@@ -467,8 +466,8 @@ export class ChessScene {
 
     const totalSteps = whiteOrder.length; // 16 steps
     let finishedSteps = 0;
-    const stepIntervalMs = 56; // Crisp sequential cadence
-    const glideDurationMs = 88; // Sharp weighted lock-in duration
+    const stepIntervalMs = 56;
+    const glideDurationMs = 88;
 
     for (let i = 0; i < totalSteps; i++) {
       const wSq = whiteOrder[i];
@@ -522,7 +521,7 @@ export class ChessScene {
           const elapsed = performance.now() - startTime;
           const progress = Math.min(elapsed / glideDurationMs, 1);
 
-          // Razor-sharp quintic deceleration into a heavy dead-stop lock
+          // Quintic ease-out
           const inv = 1 - progress;
           const ease = 1 - inv * inv * inv * inv * inv;
           const opacity = Math.min(1.0, progress * 2.4);
@@ -597,7 +596,7 @@ export class ChessScene {
     return mesh;
   }
 
-  // --- ANIMATED PIECE MOVE (Silky 60-120fps quintic glide) ---
+  // --- ANIMATED PIECE MOVE ---
   public animateMove(from: Square, to: Square, onFinish?: () => void) {
     // If any piece was being dragged while a move triggers, cancel drag immediately
     if (this.draggedMesh) {
@@ -629,12 +628,12 @@ export class ChessScene {
     const canonicalFromPos = this.squareToPosition(from);
     const endPos = this.squareToPosition(to);
     // If the piece was dropped via drag right onto the destination square, start from its dragged position;
-    // otherwise start from the exact mathematical center of `from` square so opponent moves never drift!
+    // otherwise start from the center of the `from` square.
     const startPos =
       mesh.position.distanceTo(endPos) < 0.85 ? mesh.position.clone() : canonicalFromPos;
     const dist = startPos.distanceTo(endPos);
     const startTime = performance.now();
-    // Deliberate, smooth glide speed (~450ms - 620ms duration)
+    // Glide duration (~450-620ms)
     const baseDuration = dist < 0.6 ? 180 : Math.min(620, Math.max(450, 380 + dist * 32));
     const duration = baseDuration;
     const arcHeight = dist < 0.6 ? 0.03 : Math.min(0.22, 0.10 + dist * 0.022);
@@ -689,8 +688,8 @@ export class ChessScene {
       }
     }
 
-    // Crisp, non-hazy tactical square indicators for last move & selected square
-    // Placed strictly on the board floor (renderOrder 8..11, well below pieces at 100+)
+    // Square indicators for the last move and selected square
+    // Drawn on the board floor (renderOrder 8..11, below pieces at 100+)
     if (this.lastFrom && this.lastFrom !== this.selectedSquare) {
       this.addSquareTile(this.lastFrom, 0xf5f682, 0.22);
     }
@@ -706,7 +705,7 @@ export class ChessScene {
       const isCapture = this.piecesMap.has(sq);
 
       if (isCapture) {
-        // High-visibility tactical capture ring (outer dark contrast ring + warm gold/coral inner target ring)
+        // Capture ring (dark outer ring + gold inner ring)
         const outerRingGeo = new THREE.RingGeometry(0.35, 0.47, 40);
         const outerRingMat = new THREE.MeshBasicMaterial({
           color: 0x140d08,
@@ -735,7 +734,7 @@ export class ChessScene {
         innerRing.renderOrder = 13;
         this.highlightGroup.add(innerRing);
       } else {
-        // Crisp dual-layer legal move indicator visible on both dark & light squares
+        // Legal move dot, visible on both dark and light squares
         const haloGeo = new THREE.CircleGeometry(0.16, 32);
         const haloMat = new THREE.MeshBasicMaterial({
           color: 0xfff8e7,
@@ -783,7 +782,7 @@ export class ChessScene {
     mesh.renderOrder = 10;
     this.highlightGroup.add(mesh);
 
-    // Crisp tactical square border frame so the square is immediately readable without hazing the wood
+    // Square border frame
     const frameGeo = new THREE.RingGeometry(0.44 * Math.SQRT2, 0.492 * Math.SQRT2, 4, 1, Math.PI / 4);
     const frameMat = new THREE.MeshBasicMaterial({
       color,
@@ -801,7 +800,7 @@ export class ChessScene {
 
   /**
    * Projects the top-right corner of the King on `square` into 2D screen coordinates (px)
-   * for the Chess.com-style Checkmate badge & popup.
+   * for the checkmate badge.
    */
   public getKingTopRightScreenPosition(square: Square): { x: number; y: number } | null {
     if (!this.container) return null;
@@ -914,7 +913,7 @@ export class ChessScene {
 
   public setPreviewMode(isPreview: boolean) {
     if (isPreview) {
-      this.targetZoomScale = 0.72; // Compact, zoomed-out board preview on starting interface
+      this.targetZoomScale = 0.72; // zoomed-out preview behind the bot selector
       if (this.zoomScale === 1.0) {
         this.zoomScale = 0.72;
         this.camera.fov = this.PHOTO_CAMERA_FOV / this.zoomScale;
@@ -922,7 +921,7 @@ export class ChessScene {
         if (this.onCameraChangeCallback) this.onCameraChangeCallback();
       }
     } else {
-      this.targetZoomScale = 1.0; // Smoothly glide into standard playing size
+      this.targetZoomScale = 1.0; // normal playing size
     }
   }
 
@@ -938,7 +937,7 @@ export class ChessScene {
     this.targetZoomScale = 1.0;
   }
 
-  // --- ACCURATE INTERACTION, SMOOTH DRAG & TOUCHPAD PINCH ZOOM ---
+  // --- INTERACTION: DRAG, CLICK & PINCH ZOOM ---
   private setupInteractivity() {
     const dom = this.renderer.domElement;
 
@@ -1019,7 +1018,7 @@ export class ChessScene {
         return;
       }
 
-      // Strictly prevent dragging opponent's pieces! Only player's own pieces can be dragged.
+      // Only the player's own pieces can be dragged
       if (pieceMesh && pieceMesh.userData.color === this.playerColor) {
         const exactSquareCenter = this.squareToPosition(sq);
         this.dragStartSquare = sq;
@@ -1148,7 +1147,7 @@ export class ChessScene {
       if (this.onCameraChangeCallback) this.onCameraChangeCallback();
     }
 
-    // Smoothly interpolate dragged piece toward cursor for zero-jitter dragging
+    // Ease the dragged piece toward the cursor
     if (this.isDragging && this.draggedMesh) {
       const cur = this.draggedMesh.position;
       const nextPos = new THREE.Vector3(
