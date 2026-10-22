@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-export type AryaState = 'thinking' | 'bot_moving' | 'victory' | 'defeat' | 'draw';
+export type AryaState = 'start' | 'thinking' | 'bot_moving' | 'victory' | 'defeat' | 'draw';
 
 interface AryaCompanionProps {
   state: AryaState;
@@ -9,11 +9,21 @@ interface AryaCompanionProps {
   onClickChangeBot?: () => void;
 }
 
-const FRAME_CONFIG: Record<string, { folder: string; count: number; intervalMs: number }> = {
+interface StateConfig {
+  folder: string;
+  count: number;
+  intervalMs: number;
+  isStatic?: boolean;
+  staticFrame?: number;
+}
+
+const FRAME_CONFIG: Record<AryaState, StateConfig> = {
+  start: { folder: 'waving', count: 4, intervalMs: 220 },
   thinking: { folder: 'review', count: 6, intervalMs: 180 },
   bot_moving: { folder: 'waiting', count: 6, intervalMs: 140 },
   victory: { folder: 'jumping', count: 5, intervalMs: 115 },
-  defeat: { folder: 'failed', count: 8, intervalMs: 160 },
+  // Defeat: droop head/face down (frame 03.png) and stay static (no animation)
+  defeat: { folder: 'failed', count: 8, intervalMs: 160, isStatic: true, staticFrame: 3 },
   draw: { folder: 'waving', count: 4, intervalMs: 160 }
 };
 
@@ -24,7 +34,7 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
   onClickChangeBot
 }) => {
   const [frameIndex, setFrameIndex] = useState(0);
-  const config = FRAME_CONFIG[state] || FRAME_CONFIG.thinking;
+  const config = FRAME_CONFIG[state] || FRAME_CONFIG.start;
 
   // Preload all frames once so animation never flickers
   useEffect(() => {
@@ -37,14 +47,19 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
   }, []);
 
   useEffect(() => {
+    if (config.isStatic) {
+      setFrameIndex(config.staticFrame ?? 0);
+      return;
+    }
     setFrameIndex(0);
     const id = window.setInterval(() => {
       setFrameIndex((prev) => (prev + 1) % config.count);
     }, config.intervalMs);
     return () => window.clearInterval(id);
-  }, [config.folder, config.count, config.intervalMs]);
+  }, [config.folder, config.count, config.intervalMs, config.isStatic, config.staticFrame]);
 
-  const frameStr = String(frameIndex % config.count).padStart(2, '0');
+  const activeIndex = config.isStatic ? (config.staticFrame ?? 0) : frameIndex;
+  const frameStr = String(activeIndex % config.count).padStart(2, '0');
   const frameSrc = `/arya/${config.folder}/${frameStr}.png`;
 
   return (
@@ -61,6 +76,12 @@ export const AryaCompanion: React.FC<AryaCompanionProps> = ({
               : 'bg-[#262421]/95 text-[#f0ece6] border-white/15 backdrop-blur-md'
           }`}
         >
+          {state === 'start' && (
+            <>
+              <span className="text-sm">🌸</span>
+              <span>Ready to play! Let's go!</span>
+            </>
+          )}
           {state === 'victory' && (
             <>
               <span className="text-sm">🎉</span>

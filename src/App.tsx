@@ -506,6 +506,8 @@ export const App: React.FC = () => {
       : winner === 'draw'
       ? 'draw'
       : 'defeat'
+    : moveHistory.length === 0 && !isBotThinking
+    ? 'start'
     : isBotThinking
     ? 'bot_moving'
     : 'thinking';
